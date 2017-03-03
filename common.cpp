@@ -17,6 +17,17 @@ from chad vernon
 
 #define NORMALIZATION_INDEX -1
 
+unsigned int getMStringIndex(MStringArray &myArray, MString &searching)
+{
+    unsigned int toReturn = -1;
+    for (unsigned int element = 0; element < myArray.length(); ++element) {
+        if (myArray[element] == searching) {
+            toReturn = element;
+            break;
+        }
+    }
+    return toReturn;
+}
 unsigned int GetFreeIndex(MPlug &plug)
 {
     MStatus stat;

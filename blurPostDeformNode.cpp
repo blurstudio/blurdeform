@@ -270,14 +270,6 @@ MStatus blurSculpt::initialize()
     return MStatus::kSuccess;
 }
 
-#define assert(expression)                                                     \
-    (void                                                                      \
-    )((!!(expression)) ||                                                      \
-      (_wassert(                                                               \
-           _CRT_WIDE(#expression), _CRT_WIDE(__FILE__), (unsigned)(__LINE__)   \
-       ),                                                                      \
-       0))
-
 MStatus blurSculpt::deform(
     MDataBlock &block, MItGeometry &iter, const MMatrix & /*m*/,
     unsigned int multiIndex
@@ -689,7 +681,7 @@ MStatus blurSculpt::deform(
         // blurSculpt algorithm
         // end of blurSculpt algorithm
         resPos = (pt + theVerticesSum[theindex]) * omat;
-        toset = env * weight * resPos + (1. - env * weight) * pt;
+        toset = double(env * weight) * resPos + double(1. - env * weight) * pt;
         iter.setPosition(toset);
     }
     return returnStatus;

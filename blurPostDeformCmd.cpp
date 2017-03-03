@@ -192,7 +192,9 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
             // MGlobal::displayInfo(toDisplay);
         }
         if (getListFrames_) {
-            int poseIndex = allPosesNames_.indexOf(poseName_);
+            int poseIndex = getMStringIndex(
+                allPosesNames_, poseName_
+            ); // allPosesNames_.indexOf(poseName_);
             if (poseIndex == -1) {
                 MGlobal::displayError(poseName_ + " is not a pose");
                 return MS::kFailure;
@@ -599,7 +601,9 @@ MStatus blurSculptCmd::addAPose()
     // get list of poses
     MPlug posesPlug = blurSculptDepNode.findPlug(blurSculpt::poses, &status);
     // get the index of the poseName in the array
-    int tmpInd = allPosesNames_.indexOf(poseName_);
+    int tmpInd = getMStringIndex(
+        allPosesNames_, poseName_
+    ); // allPosesNames_.indexOf(poseName_);
     int poseIndex;
 
     // MGlobal::displayInfo(MString("indexOfPoseName : ") + poseIndex);
@@ -678,12 +682,16 @@ MStatus blurSculptCmd::addAFrame()
     int deformationType = deformationTypePlug.asInt();
 
     // get the index of the poseName in the array
-    int tmpInd = allPosesNames_.indexOf(poseName_);
+    int tmpInd = getMStringIndex(
+        allPosesNames_, poseName_
+    ); // allPosesNames_.indexOf(poseName_);
 
     if (tmpInd == -1) { // if doesn't exists create new one
         addAPose();     // add the pose
         getListPoses(); // get the list
-        int tmpInd = allPosesNames_.indexOf(poseName_);
+        int tmpInd = getMStringIndex(
+            allPosesNames_, poseName_
+        ); // allPosesNames_.indexOf(poseName_);
     }
     int poseIndex = allPosesIndices_[tmpInd];
 

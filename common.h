@@ -28,6 +28,8 @@
 // get a free index of a channel
 unsigned int GetFreeIndex(MPlug &plug);
 
+unsigned int getMStringIndex(MStringArray &myArray, MString &searching);
+
 /**
   Helper function to start a new progress bar.
   @param[in] title Status title.
