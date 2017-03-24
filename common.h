@@ -17,6 +17,8 @@
 #include <maya/MPointArray.h>
 #include <maya/MString.h>
 
+#include <maya/MItMeshVertex.h>
+#include <maya/MfnMesh.h>
 #include <set>
 #include <vector>
 
@@ -24,6 +26,9 @@
 #include <immintrin.h>
 #include <xmmintrin.h>
 #endif
+MVector getVertexTangent(
+    MFnMesh &fnInputMesh, MItMeshVertex &meshVertIt, int theVertexNumber
+);
 
 // get a free index of a channel
 unsigned int GetFreeIndex(MPlug &plug);

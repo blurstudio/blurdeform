@@ -16,7 +16,31 @@ from chad vernon
 #include <utility>
 
 #define NORMALIZATION_INDEX -1
-
+MVector getVertexTangent(
+    MFnMesh &fnInputMesh, MItMeshVertex &meshVertIt, int theVertexNumber
+)
+{
+    MVector tangent;
+    int oldInd;
+    meshVertIt.setIndex(theVertexNumber, oldInd);
+    MIntArray connectedFaces;
+    meshVertIt.getConnectedFaces(connectedFaces);
+    MVector theTangent;
+    for (unsigned int i = 0; i < connectedFaces.length(); i += 3) {
+        int theFace = connectedFaces[i];
+        fnInputMesh.getFaceVertexTangent(
+            theFace, theVertexNumber, theTangent, MSpace::kWorld
+        );
+        if (i == 0) {
+            tangent = theTangent;
+        }
+        else {
+            tangent += theTangent;
+        }
+    }
+    tangent.normalize();
+    return tangent;
+}
 unsigned int getMStringIndex(MStringArray &myArray, MString &searching)
 {
     unsigned int toReturn = -1;

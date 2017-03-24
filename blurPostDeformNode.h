@@ -96,7 +96,7 @@ class blurSculpt : public MPxDeformerNode {
         MArrayDataHandle &triangleFaceValuesData,
         MArrayDataHandle &vertexVertexIndicesData,
         MArrayDataHandle &vertexFaceIndicesData, MFnMesh &fnInputMesh,
-        int theVertexNumber, int deformType
+        MItMeshVertex &meshVertIt, int theVertexNumber, int deformType
     );
 
   public:
@@ -106,10 +106,9 @@ class blurSculpt : public MPxDeformerNode {
 
     static MTypeId id;
 
-    static MObject inTime;          // the inTime
-    static MObject deformationType; // type of deformation (world, local, uv)
-    static MObject uvSet;           // the uv set
-    static MObject smoothNormals;   // the uv set
+    static MObject inTime;        // the inTime
+    static MObject uvSet;         // the uv set
+    static MObject smoothNormals; // the uv set
 
     static MObject vertexFaceIndices;   // store the vertex face relationship
     static MObject vertexVertexIndices; // store the vertex vertex relationship
@@ -126,13 +125,15 @@ class blurSculpt : public MPxDeformerNode {
     static MObject poses; // array of all the poses
 
     static MObject poseName;
-    static MObject poseGain;    // mult of the pose position
-    static MObject poseOffset;  // add of the pose position
-    static MObject poseEnabled; // boolean for enable/disable Pose
-    static MObject poseMatrix;  //  a matrix to calculate deformation from
+    static MObject poseGain;        // mult of the pose position
+    static MObject poseOffset;      // add of the pose position
+    static MObject poseEnabled;     // boolean for enable/disable Pose
+    static MObject poseMatrix;      //  a matrix to calculate deformation from
+    static MObject deformationType; // type of deformation (world, local, uv)
 
     static MObject deformations;    // array of the deformations containing
     static MObject frame;           // float for the frame
+    static MObject frameEnabled;    // float for the frame
     static MObject gain;            // multier
     static MObject offset;          // added
     static MObject vectorMovements; // the vectors of movements
