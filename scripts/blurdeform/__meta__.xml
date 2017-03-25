@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data type="Maya" version="1.0">
+  <icon>img/icon.png</icon>
+  <wiki>blurdeform</wiki>
+  <src>main.pyw</src>
+  <toolTip>GUI to work with the blurSculpt plugin</toolTip>
+  <displayName>Blur Deform</displayName>
+  <category>General_Use_Tools::Hair</category>
+</data>
