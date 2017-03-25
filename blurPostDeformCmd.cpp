@@ -159,6 +159,10 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
         // CHECK_MSTATUS_AND_RETURN_IT(status);
         setFaceVertexRelationShip();
         computeBarycenters();
+
+        MFnDependencyNode fnBlurSculptNode(oBlurSculptNode_);
+        setResult(fnBlurSculptNode.name());
+        // appendToResult(oBlurSculptNode_.asChar());
     }
     CHECK_MSTATUS_AND_RETURN_IT(status);
     status = getListPoses();
