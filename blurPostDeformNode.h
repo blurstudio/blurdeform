@@ -90,14 +90,42 @@ class blurSculpt : public MPxDeformerNode {
     // MStatus setFrameVtx(MArrayDataHandle &deformationsHandle, MMatrix
     // poseMat, MPoint matPoint, int deformType, int frameIndex, int theMult,
     // float poseGainValue, float poseOffsetValue);
-    MVector getTheTangent(
-        MPointArray &deformedMeshVerticesPos,
-        MArrayDataHandle &vertexTriangleIndicesData,
-        MArrayDataHandle &triangleFaceValuesData,
-        MArrayDataHandle &vertexVertexIndicesData,
-        MArrayDataHandle &vertexFaceIndicesData, MFnMesh &fnInputMesh,
-        MItMeshVertex &meshVertIt, int theVertexNumber, int deformType
+
+    void getSmoothedTangent(
+        int indVtx, MFnMesh &fnInputMesh, MIntArray &smoothTangentFound,
+        MIntArray &tangentFound, MFloatVectorArray &tangents,
+        MFloatVectorArray &smoothTangents
     );
+
+    void getSmoothedNormal(
+        int indVtx, MIntArray &smoothNormalFound, MFloatVectorArray &normals,
+        MFloatVectorArray &smoothedNormals
+    );
+
+    /*
+    MVector getTheTangent(MPointArray& deformedMeshVerticesPos,
+            MArrayDataHandle& vertexTriangleIndicesData,
+            MArrayDataHandle& triangleFaceValuesData,
+            MArrayDataHandle& vertexVertexIndicesData,
+            MArrayDataHandle& vertexFaceIndicesData,
+            MFnMesh& fnInputMesh,
+            MItMeshVertex& meshVertIt,
+            int theVertexNumber, int deformType);
+    */
+    MStatus sumDeformation(
+        MArrayDataHandle
+            &deformationsHandle, // the current handle of the deformation
+        MFnMesh &fnInputMesh,    // the current mesh
+        float poseGainValue, float poseOffsetValue,
+        float curentMult, // the pose multiplication of gain and value
+        MMatrix &poseMat, MPoint &matPoint, bool useSmoothNormals,
+        int deformType, MIntArray &tangentFound, MIntArray &smoothTangentFound,
+        MIntArray &smoothNormalFound, // if we already have the tangets or not
+        MFloatVectorArray &normals, MFloatVectorArray &smoothedNormals,
+        MFloatVectorArray &tangents,
+        MFloatVectorArray &smoothTangents, // the values of tangents and normals
+        MPointArray &theVerticesSum
+    ); // the output array to fill
 
   public:
     // local node attributes
@@ -109,18 +137,20 @@ class blurSculpt : public MPxDeformerNode {
     static MObject inTime;        // the inTime
     static MObject uvSet;         // the uv set
     static MObject smoothNormals; // the uv set
-
-    static MObject vertexFaceIndices;   // store the vertex face relationship
+    /*
+    static MObject vertexFaceIndices; // store the vertex face relationship
     static MObject vertexVertexIndices; // store the vertex vertex relationship
 
     // structure to save relationShips
     static MObject vertexTriangleIndices; // store the vertex face relationship
-    static MObject triangleFaceValues;    // array of all the triangles
-    static MObject vertex1;               //
-    static MObject vertex2;               //
-    static MObject vertex3;               //
-    static MObject uValue;                //
-    static MObject vValue;                //
+    static MObject triangleFaceValues; // array of all the triangles
+            static MObject vertex1; //
+            static MObject vertex2; //
+            static MObject vertex3; //
+            static MObject uValue; //
+            static MObject vValue; //
+
+    */
 
     static MObject poses; // array of all the poses
 
@@ -138,12 +168,19 @@ class blurSculpt : public MPxDeformerNode {
     static MObject offset;          // added
     static MObject vectorMovements; // the vectors of movements
 
-    /*
-    private:
-    bool getConnectedVerts(MItMeshVertex& meshIter, MIntArray& connVerts, int
-    currVertIndex); static MVector getCurrNormal(MPointArray& inputPts,
-    MIntArray& connVerts); bool inited; protected:
-    */
+  private:
+    // cached attributes
+    int init;
+    std::vector<MIntArray>
+        connectedVertices; // use by MItMeshVertex getConnectedVertices
+    std::vector<MIntArray>
+        connectedFaces; // use by MItMeshVertex getConnectedFaces
+                        /*
+                        private:
+                        bool getConnectedVerts(MItMeshVertex& meshIter, MIntArray& connVerts, int
+                        currVertIndex);                     static MVector getCurrNormal(MPointArray& inputPts,
+                        MIntArray& connVerts);                     bool inited;                     protected:
+                        */
 };
 
 // the GPU override implementation of the blurSculptNode

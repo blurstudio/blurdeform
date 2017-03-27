@@ -154,15 +154,12 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
 
         status = dgMod_.commandToExecute(command);
         status = dgMod_.doIt();
-        // CHECK_MSTATUS_AND_RETURN_IT(status);
         status = GetLatestBlurSculptNode();
-        // CHECK_MSTATUS_AND_RETURN_IT(status);
-        setFaceVertexRelationShip();
-        computeBarycenters();
+        // setFaceVertexRelationShip();
+        // computeBarycenters();
 
         MFnDependencyNode fnBlurSculptNode(oBlurSculptNode_);
         setResult(fnBlurSculptNode.name());
-        // appendToResult(oBlurSculptNode_.asChar());
     }
     CHECK_MSTATUS_AND_RETURN_IT(status);
     status = getListPoses();
@@ -208,7 +205,7 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
                 MString toDisplay(
                     "the frame for pose " + poseName_ + " are : \n"
                 );
-                for (int i = 0; i < allFramesFloats_.length(); i++) {
+                for (unsigned int i = 0; i < allFramesFloats_.length(); i++) {
                     toDisplay +=
                         MString(" [") + allFramesFloats_[i] + MString("]");
                     appendToResult(static_cast<float>(allFramesFloats_[i]));
@@ -322,49 +319,49 @@ MStatus blurSculptCmd::GetGeometryPaths()
     */
     return MS::kSuccess;
 }
+/*
+MStatus blurSculptCmd::setFaceVertexRelationShip() {
+        MStatus status;
+        MFnMesh fnDeformedMesh(meshDeformed_, &status);
+        int nbDeformedVtx = fnDeformedMesh.numVertices();
+        MItMeshVertex vertexIter(meshDeformed_);
 
-MStatus blurSculptCmd::setFaceVertexRelationShip()
-{
-    MStatus status;
-    MFnMesh fnDeformedMesh(meshDeformed_, &status);
-    int nbDeformedVtx = fnDeformedMesh.numVertices();
-    MItMeshVertex vertexIter(meshDeformed_);
+        MFnDependencyNode blurSculptDepNode(oBlurSculptNode_);
+        MPlug vertexFaceIndicesPlug =
+blurSculptDepNode.findPlug(blurSculpt::vertexFaceIndices); MPlug
+vertexVertexIndicesPlug =
+blurSculptDepNode.findPlug(blurSculpt::vertexVertexIndices);
 
-    MFnDependencyNode blurSculptDepNode(oBlurSculptNode_);
-    MPlug vertexFaceIndicesPlug =
-        blurSculptDepNode.findPlug(blurSculpt::vertexFaceIndices);
-    MPlug vertexVertexIndicesPlug =
-        blurSculptDepNode.findPlug(blurSculpt::vertexVertexIndices);
+        MIntArray faces, edges, vertexList;
+        MPlug theVertexFace, theVertextVertex;
 
-    MIntArray faces, edges, vertexList;
-    MPlug theVertexFace, theVertextVertex;
+        int vertexInd = 0;
+        for (; !vertexIter.isDone(); vertexIter.next()) {
+                vertexIter.getConnectedFaces(faces);
+                int faceIndex = faces[0];
+                vertexIter.getConnectedEdges(edges);
+                int2 vertexList;
+                int nextVertex;
+                fnDeformedMesh.getEdgeVertices(edges[0], vertexList);
+                if (vertexList[0] == vertexInd)
+                        nextVertex = vertexList[1];
+                else
+                        nextVertex = vertexList[0];
 
-    int vertexInd = 0;
-    for (; !vertexIter.isDone(); vertexIter.next()) {
-        vertexIter.getConnectedFaces(faces);
-        int faceIndex = faces[0];
-        vertexIter.getConnectedEdges(edges);
-        int2 vertexList;
-        int nextVertex;
-        fnDeformedMesh.getEdgeVertices(edges[0], vertexList);
-        if (vertexList[0] == vertexInd)
-            nextVertex = vertexList[1];
-        else
-            nextVertex = vertexList[0];
+                theVertexFace =
+vertexFaceIndicesPlug.elementByLogicalIndex(vertexInd, &status);
+                theVertexFace.setValue(faceIndex);
 
-        theVertexFace =
-            vertexFaceIndicesPlug.elementByLogicalIndex(vertexInd, &status);
-        theVertexFace.setValue(faceIndex);
+                theVertextVertex =
+vertexVertexIndicesPlug.elementByLogicalIndex(vertexInd, &status);
+                theVertextVertex.setValue(nextVertex);
 
-        theVertextVertex =
-            vertexVertexIndicesPlug.elementByLogicalIndex(vertexInd, &status);
-        theVertextVertex.setValue(nextVertex);
+                vertexInd++;
+        }
+        return MS::kSuccess;
 
-        vertexInd++;
-    }
-    return MS::kSuccess;
 }
-
+*/
 MStatus blurSculptCmd::GetLatestBlurSculptNode()
 {
     MStatus status;
@@ -466,137 +463,144 @@ MStatus blurSculptCmd::getListFrames(int poseIndex)
     return MS::kSuccess;
 }
 
-MStatus blurSculptCmd::computeBarycenters()
-{
-    /*
-    //
-    http://tech-artists.org/forum/showthread.php?4907-Maya-API-Vertex-and-Face-matrix-tangent-space
+/*
+MStatus blurSculptCmd::computeBarycenters() {
 
-    This is not a very trivial thing. If you construct the tangents by yourself
-    rather than having maya do it you'll be getting the most stable results. A
-    clean UV map is a requirement however... Maya's mesh lacks a large amount of
-    self awareness, most data is per face-vertex but there is no proper
-    transitioning between vertex and face-vertices and not good way to get
-    averaged data per vertex. Best is to use a MItMeshPolygon to iterate the
-    polygons. MObject sInMeshAttr is the typed kMesh attribute, MDataBlock data
-    is the io data as passed to compute
-    */
-    MStatus status;
-    MFnMesh fnDeformedMesh(meshDeformed_, &status);
-    MItMeshPolygon inMeshIter(meshDeformed_);
+        //
+http://tech-artists.org/forum/showthread.php?4907-Maya-API-Vertex-and-Face-matrix-tangent-space
 
-    MFnDependencyNode blurSculptDepNode(oBlurSculptNode_);
+        //This is not a very trivial thing. If you construct the tangents by
+yourself rather than having maya do it you'll be getting the most stable
+results. A clean UV map is a requirement however...
+        //Maya's mesh lacks a large amount of self awareness, most data is per
+face-vertex but there is no proper transitioning between vertex and
+face-vertices and not good way to get averaged data per vertex.
+        //Best is to use a MItMeshPolygon to iterate the polygons.
+        //MObject sInMeshAttr is the typed kMesh attribute, MDataBlock data is
+the io data as passed to compute
 
-    int initialSize = fnDeformedMesh.numVertices();
-    MIntArray parsed(initialSize, -1);
-    // Then we need to iterate the individual triangles to get accurate tangent
-    // data
+        MStatus status;
+        MFnMesh fnDeformedMesh(meshDeformed_, &status);
+        MItMeshPolygon inMeshIter(meshDeformed_);
 
-    MPlug vertexFaceIndicesPlug =
-        blurSculptDepNode.findPlug(blurSculpt::triangleFaceValues);
-    MPlug vertexTriangleIndicesPlug =
-        blurSculptDepNode.findPlug(blurSculpt::vertexTriangleIndices);
+        MFnDependencyNode blurSculptDepNode(oBlurSculptNode_);
 
-    int triangleInd = 0;
-    MPlug trianglePlug, vertexTrianglePlug, vertex1Plug, vertex2Plug,
-        vertex3Plug, uValuePlug, vValuePlug;
-    MGlobal::displayInfo(MString("\n BaryCenters\n"));
+        int initialSize = fnDeformedMesh.numVertices();
+        MIntArray parsed (initialSize,-1);
+        //Then we need to iterate the individual triangles to get accurate
+tangent data
 
-    for (int triangleInd = 0; !inMeshIter.isDone();
-         inMeshIter.next(), ++triangleInd) {
-        // get the trianglePlug
-        trianglePlug =
-            vertexFaceIndicesPlug.elementByLogicalIndex(triangleInd, &status);
-        vertex1Plug = trianglePlug.child(blurSculpt::vertex1);
-        vertex2Plug = trianglePlug.child(blurSculpt::vertex2);
-        vertex3Plug = trianglePlug.child(blurSculpt::vertex3);
-        uValuePlug = trianglePlug.child(blurSculpt::uValue);
-        vValuePlug = trianglePlug.child(blurSculpt::vValue);
+        MPlug vertexFaceIndicesPlug =
+blurSculptDepNode.findPlug(blurSculpt::triangleFaceValues); MPlug
+vertexTriangleIndicesPlug =
+blurSculptDepNode.findPlug(blurSculpt::vertexTriangleIndices);
 
-        MPointArray points;
-        MIntArray vertices;
-        inMeshIter.getTriangles(points, vertices);
-        MFloatArray u;
-        MFloatArray v;
-        inMeshIter.getUVs(u, v);
-        /*Now that we know the points, uvs ad vertex indices per triangle vertex
-        we can start getting the tangent per triangle and use that tangent for
-        all vertices in the triangle. If a vertex is split and has multiple we
-        can only use one of the uv-space-triangles to get a 3D tangent per
-        vertex.
+        int triangleInd = 0;
+        MPlug trianglePlug, vertexTrianglePlug ,  vertex1Plug, vertex2Plug,
+vertex3Plug, uValuePlug, vValuePlug; MGlobal::displayInfo(MString("\n
+BaryCenters\n"));
 
-        This bit iterates each triangle of the poylgon's triangulation (3
-        points) and extracts the barycentric coordinates for the tangent.
-        */
-        for (unsigned int i = 0; i < vertices.length(); i += 3) {
-            // Taking UV coordinates [i-(i+2)] as our triangle and
-            // the unitX (1,0) as point to get barycentric coordinates for
-            // we can get the U direction in barycentric using the function
-            // from this site:
-            // http://www.blackpawn.com/texts/pointinpoly/
-            double u02 = (u[i + 2] - u[i]);
-            double v02 = (v[i + 2] - v[i]);
-            double u01 = (u[i + 1] - u[i]);
-            double v01 = (v[i + 1] - v[i]);
-            double dot00 = u02 * u02 + v02 * v02;
-            double dot01 = u02 * u01 + v02 * v01;
-            double dot11 = u01 * u01 + v01 * v01;
-            double d = dot00 * dot11 - dot01 * dot01;
-            double u = 1.0;
-            double v = 1.0;
-            if (d != 0.0) {
-                u = (dot11 * u02 - dot01 * u01) / d;
-                v = (dot00 * u01 - dot01 * u02) / d;
-            }
+        for (int triangleInd = 0; !inMeshIter.isDone(); inMeshIter.next(),
+++triangleInd)
+        {
+                // get the trianglePlug
+                trianglePlug =
+vertexFaceIndicesPlug.elementByLogicalIndex(triangleInd, &status); vertex1Plug =
+trianglePlug.child(blurSculpt::vertex1); vertex2Plug =
+trianglePlug.child(blurSculpt::vertex2); vertex3Plug =
+trianglePlug.child(blurSculpt::vertex3); uValuePlug =
+trianglePlug.child(blurSculpt::uValue); vValuePlug =
+trianglePlug.child(blurSculpt::vValue);
 
-            uValuePlug.setDouble(u);
-            vValuePlug.setDouble(v);
-            vertex1Plug.setInt(vertices[0]);
-            vertex2Plug.setInt(vertices[1]);
-            vertex3Plug.setInt(vertices[2]);
+                MPointArray points;
+                MIntArray vertices;
+                inMeshIter.getTriangles(points, vertices);
+                MFloatArray u;
+                MFloatArray v;
+                inMeshIter.getUVs(u, v);
+                //Now that we know the points, uvs ad vertex indices per
+triangle vertex we can start getting the tangent per triangle
+                //and use that tangent for all vertices in the triangle. If a
+vertex is split and has multiple we can only use one of the
+                //uv-space-triangles to get a 3D tangent per vertex.
+                //
+                //This bit iterates each triangle of the poylgon's triangulation
+(3 points)
+                //and extracts the barycentric coordinates for the tangent.
 
-            // Now to get the 3D tangent all we need to do is apply the
-            // barycentric coordinates to the 3D points :
-            MVector tangent =
-                points[i + 2] * u + points[i + 1] * v - points[i] * (u + v);
-            MVector binormal, normal;
-            // Next we iterate over the three vertices individually.
-            /*Here we use MFnMesh::getVertexNormal for the average normal
-            (whether you want angle-weighted depends on what you're doing, I
-            often don't use them). Having the average normal and triangle
-            tangent we can use the cross product for the binormal, cross the
-            normal & binormal again to get a proper perpendicular tangent,
-            because the normal is average and the tangent is not the initial
-            tangent was wrong.
-            */
-            for (unsigned int j = i; j < i + 3; ++j) {
-                int theVtx = vertices[j];
-                if (parsed[theVtx] == -1) {
-                    // store the triangle index
-                    vertexTrianglePlug =
-                        vertexTriangleIndicesPlug.elementByLogicalIndex(
-                            theVtx, &status
-                        );
-                    vertexTrianglePlug.setValue(triangleInd);
-                    // fnDeformedMesh.getVertexNormal(vertices[j], false,
-                    // normal); binormal = tangent ^ normal;
-                    // binormal.normalize();
-                    // tangent = binormal ^ normal;
-                    // tangent.normalize();
-                    //  store the vertex
-                    parsed.set(1, theVtx);
+                for (unsigned int i = 0; i < vertices.length(); i += 3)
+                {
+                        // Taking UV coordinates [i-(i+2)] as our triangle and
+                        // the unitX (1,0) as point to get barycentric
+coordinates for
+                        // we can get the U direction in barycentric using the
+function
+                        // from this site:
+                        // http://www.blackpawn.com/texts/pointinpoly/
+                        double u02 = (u[i + 2] - u[i]);
+                        double v02 = (v[i + 2] - v[i]);
+                        double u01 = (u[i + 1] - u[i]);
+                        double v01 = (v[i + 1] - v[i]);
+                        double dot00 = u02 * u02 + v02 * v02;
+                        double dot01 = u02 * u01 + v02 * v01;
+                        double dot11 = u01 * u01 + v01 * v01;
+                        double d = dot00 * dot11 - dot01 * dot01;
+                        double u = 1.0;
+                        double v = 1.0;
+                        if (d != 0.0)
+                        {
+                                u = (dot11 * u02 - dot01 * u01) / d;
+                                v = (dot00 * u01 - dot01 * u02) / d;
+                        }
+
+                        uValuePlug.setDouble(u);
+                        vValuePlug.setDouble(v);
+                        vertex1Plug.setInt(vertices[0]);
+                        vertex2Plug.setInt(vertices[1]);
+                        vertex3Plug.setInt(vertices[2]);
+
+                        //Now to get the 3D tangent all we need to do is apply
+the barycentric coordinates to the 3D points : MVector tangent = points[i + 2] *
+u + points[i + 1] * v - points[i] * (u + v); MVector binormal, normal;
+                        //Next we iterate over the three vertices individually.
+                        //Here we use MFnMesh::getVertexNormal for the average
+normal (whether you want angle-weighted depends on what you're doing, I often
+don't use them).
+                        //Having the average normal and triangle tangent we can
+use the cross product for the binormal, cross the normal & binormal again to get
+a proper
+                        //perpendicular tangent, because the normal is average
+and the tangent is not the initial tangent was wrong.
+
+                        for (unsigned int j = i; j < i + 3; ++j) {
+                                int theVtx = vertices[j];
+                                if (parsed[theVtx] == -1) {
+                                        // store the triangle index
+                                        vertexTrianglePlug =
+vertexTriangleIndicesPlug.elementByLogicalIndex(theVtx, &status);
+                                        vertexTrianglePlug.setValue(triangleInd);
+                                        //fnDeformedMesh.getVertexNormal(vertices[j],
+false, normal);
+                                        //binormal = tangent ^ normal;
+                                        //binormal.normalize();
+                                        //tangent = binormal ^ normal;
+                                        //tangent.normalize();
+                                        // store the vertex
+                                        parsed.set (1, theVtx);
+                                }
+                                //the matrix produced
+                                //{ {tangent[0], tangent[1], tangent[2], 0},
+                                //{ binormal[0], binormal[1], binormal[2], 0 },
+                                //{ normal[0], normal[1], normal[2], 0 },
+                                //{ point[0], point[1], point[2], 0 }}
+
+                        }
                 }
-                // the matrix produced
-                //{ {tangent[0], tangent[1], tangent[2], 0},
-                //{ binormal[0], binormal[1], binormal[2], 0 },
-                //{ normal[0], normal[1], normal[2], 0 },
-                //{ point[0], point[1], point[2], 0 }}
-            }
-        }
-    }
-    return MS::kSuccess;
-}
 
+        }
+        return MS::kSuccess;
+}
+*/
 MStatus blurSculptCmd::addAPose()
 {
     MStatus status;
@@ -727,7 +731,7 @@ MStatus blurSculptCmd::addAFrame()
     // we get the list of frames for the pose
     int deformationIndex = -1;
     bool emptyFrameChannel = false;
-    for (int i = 0; i < allFramesFloats_.length(); i++) {
+    for (unsigned int i = 0; i < allFramesFloats_.length(); i++) {
         if (currentFrameF == allFramesFloats_[i]) {
             // work with the indices
             deformationIndex = allFramesIndices_[i];
@@ -757,16 +761,7 @@ MStatus blurSculptCmd::addAFrame()
     // thePoseGainPlug.setValue(0);
     poseEnabledPlug.setValue(false);
     fnDeformedMesh.getPoints(deformedMeshVerticesPos, MSpace::kObject);
-    /*
-    if (deformationType == 1) {
-            //get the preDeformMesh
-            // get the normals
-            MFloatVectorArray normals, binormals, tangents;
-            fnDeformedMesh.getVertexNormals(false, normals, MSpace::kWorld);
-            //fnDeformedMesh.getBinormals(binormals, MSpace::kWorld);
-            //fnDeformedMesh.getTangents (tangents, MSpace::kWorld);
-    }
-    */
+
     // then reset the gain to its value
     // thePoseGainPlug.setValue(prevGainValue);
 
@@ -775,14 +770,6 @@ MStatus blurSculptCmd::addAFrame()
     // MItMeshPolygon faceIter(meshDeformed_);
     MPoint offsetPoint;
     MMatrix mMatrix;
-    MPlug vertexFaceIndicesPlug =
-        blurSculptDepNode.findPlug(blurSculpt::vertexFaceIndices);
-    MPlug vertexVertexIndicesPlug =
-        blurSculptDepNode.findPlug(blurSculpt::vertexVertexIndices);
-    MPlug vertexTriangleIndicesPlug =
-        blurSculptDepNode.findPlug(blurSculpt::vertexTriangleIndices);
-    MPlug triangleFaceValuesPlug =
-        blurSculptDepNode.findPlug(blurSculpt::triangleFaceValues);
 
     // if the channel is full first empty it
     /*
@@ -812,10 +799,7 @@ MStatus blurSculptCmd::addAFrame()
     */
     MPlug facePlug, vertexPlug, vertexTrianglePlug, triangleValuesPlug;
     MVector normal, tangent, binormal, cross;
-    int faceIndex, tangentVertexIndex, triangleIndex;
     MPoint DFV, TV;
-    int v1, v2, v3;
-    double u, v;
 
     MFloatVectorArray normals;
     MVectorArray tangents(nbDeformedVtx), smoothTangents(nbDeformedVtx);
@@ -863,79 +847,40 @@ MStatus blurSculptCmd::addAFrame()
                 // offsetPoint = offsetPoint  * matrixValueInverse + matPoint;
             }
             else {
-                if (deformationType == 2) { // useTriangle
-                    vertexTrianglePlug =
-                        vertexTriangleIndicesPlug.elementByLogicalIndex(
-                            indVtx, &status
-                        );
-                    triangleIndex = vertexTrianglePlug.asInt();
-                    triangleValuesPlug =
-                        triangleFaceValuesPlug.elementByLogicalIndex(
-                            triangleIndex, &status
-                        );
-                    v1 = triangleValuesPlug.child(blurSculpt::vertex1).asInt();
-                    v2 = triangleValuesPlug.child(blurSculpt::vertex2).asInt();
-                    v3 = triangleValuesPlug.child(blurSculpt::vertex3).asInt();
-                    u = triangleValuesPlug.child(blurSculpt::uValue).asDouble();
-                    v = triangleValuesPlug.child(blurSculpt::vValue).asDouble();
-
-                    tangent = deformedMeshVerticesPos[v3] * u +
-                              deformedMeshVerticesPos[v2] * v -
-                              deformedMeshVerticesPos[v1] * (u + v);
-                }
-                else if (deformationType == 3) { // useVertex
-                    vertexPlug = vertexVertexIndicesPlug.elementByLogicalIndex(
-                        indVtx, &status
+                if (tangentFound[indVtx] == -1) {
+                    tangents.set(
+                        getVertexTangent(fnDeformedMesh, vertexIter, indVtx),
+                        indVtx
                     );
-                    tangentVertexIndex = vertexPlug.asInt();
-                    tangent = deformedMeshVerticesPos[tangentVertexIndex] - DFV;
+                    tangentFound[indVtx] = 1;
                 }
-                else { // (deformationType == 1) {//useMaya
-                    /*
-                    facePlug =
-                    vertexFaceIndicesPlug.elementByLogicalIndex(indVtx,
-                    &status); faceIndex = facePlug.asInt();
-                    fnDeformedMesh.getFaceVertexTangent(faceIndex, indVtx,
-                    tangent, MSpace::kWorld);
-                    */
-                    if (tangentFound[indVtx] == -1) {
-                        tangents.set(
-                            getVertexTangent(
-                                fnDeformedMesh, vertexIter, indVtx
-                            ),
-                            indVtx
-                        );
-                        tangentFound[indVtx] == 1;
-                    }
-                    tangent = tangents[indVtx];
-                    if (useSmoothNormals) {
-                        MIntArray surroundingVertices =
-                            perFaceConnectedVertices[indVtx];
-                        int nbSurrounding = surroundingVertices.length();
-                        for (int k = 0; k < nbSurrounding; ++k) {
-                            int vtxAround = surroundingVertices[k];
-                            if (tangentFound[vtxAround] == -1) {
-                                tangents.set(
-                                    getVertexTangent(
-                                        fnDeformedMesh, vertexIter, vtxAround
-                                    ),
-                                    vtxAround
-                                );
-                                tangentFound[vtxAround] == 1;
-                            }
-                            tangent += tangents[vtxAround];
+                tangent = tangents[indVtx];
+                if (useSmoothNormals) {
+                    MIntArray surroundingVertices =
+                        perFaceConnectedVertices[indVtx];
+                    int nbSurrounding = surroundingVertices.length();
+                    for (int k = 0; k < nbSurrounding; ++k) {
+                        int vtxAround = surroundingVertices[k];
+                        if (tangentFound[vtxAround] == -1) {
+                            tangents.set(
+                                getVertexTangent(
+                                    fnDeformedMesh, vertexIter, vtxAround
+                                ),
+                                vtxAround
+                            );
+                            tangentFound[vtxAround] = 1;
                         }
+                        tangent += tangents[vtxAround];
                     }
                 }
                 // fnDeformedMesh.getVertexNormal(indVtx, false, normal);
-                tangent.normalize();
-
                 if (useSmoothNormals) {
                     normal = smoothedNormals[indVtx];
                 }
                 else {
                     normal = normals[indVtx];
                 }
+                tangent.normalize();
                 CreateMatrix(zeroPt, normal, tangent, mMatrix);
                 offsetPoint = (TV - DFV) * mMatrix.inverse();
             }
@@ -962,158 +907,3 @@ MStatus blurSculptCmd::addAFrame()
 
     return MS::kSuccess;
 }
-
-/*
-MStatus blurSculptCmd::CreateWrapDeformer() {
- MStatus status;
- // Create the deformer
- status = dgMod_.doIt();
- CHECK_MSTATUS_AND_RETURN_IT(status);
- // Reacquire the paths because on referenced geo, a new driven path is created
-(the ShapeDeformed). status = GetGeometryPaths();
- CHECK_MSTATUS_AND_RETURN_IT(status);
- // Get the created wrap deformer node.
- status = GetLatestWrapNode();
- CHECK_MSTATUS_AND_RETURN_IT(status);
-
- MFnDependencyNode fnNode(oWrapNode_, &status);
- setResult(fnNode.name());
- CHECK_MSTATUS_AND_RETURN_IT(status);
-
- // Create a bind mesh so we can run rebind commands.  We need a mesh at the
-state of the
- // initial binding in order to properly calculate rebinding information.  We
-can't use
- // the intermediate mesh for rebinding because we may not be binding at the
-rest pose.
- // Check if this driver already has a bind mesh.
- MDagPath pathBindMesh;
- status = GetExistingBindMesh(pathBindMesh);
- CHECK_MSTATUS_AND_RETURN_IT(status);
-
- MDGModifier dgMod;
- BindData bindData;
- status = CalculateBinding(pathBindMesh, bindData, dgMod);
- CHECK_MSTATUS_AND_RETURN_IT(status);
- status = dgMod.doIt();
- CHECK_MSTATUS_AND_RETURN_IT(status);
-
- // Connect the driver mesh to the wrap deformer.
- MFnDagNode fnDriver(pathDriver_);
- MPlug plugDriverMesh = fnDriver.findPlug("worldMesh", false, &status);
- CHECK_MSTATUS_AND_RETURN_IT(status);
- status = plugDriverMesh.selectAncestorLogicalIndex(0,
-plugDriverMesh.attribute()); CHECK_MSTATUS_AND_RETURN_IT(status); MPlug
-plugDriverGeo(oWrapNode_, CVWrap::aDriverGeo); MDGModifier dgMod;
- dgMod.connect(plugDriverMesh, plugDriverGeo);
- status = dgMod.doIt();
- CHECK_MSTATUS_AND_RETURN_IT(status);
-
- return MS::kSuccess;
-}
-*/
-
-bool SortCoords(std::pair<int, float> lhs, std::pair<int, float> rhs)
-{
-    return (lhs.second > rhs.second);
-}
-
-/*
-MThreadRetVal blurSculptCmd::CalculateBindingTask(void *pParam) {
-  ThreadData<BindData>* pThreadData =
-static_cast<ThreadData<BindData>*>(pParam); double*& alignedStorage =
-pThreadData->alignedStorage; BindData* pData = pThreadData->pData;
-  MMeshIntersector& intersector = pData->intersector;
-  MMeshIntersector& subsetIntersector = pData->subsetIntersector;
-  MPointArray& inputPoints = pData->inputPoints;
-  MPointArray& driverPoints = pData->driverPoints;
-  MFloatVectorArray& driverNormals = pData->driverNormals;
-  std::vector<std::set<int> >& adjacency = pData->adjacency;
-  std::vector<MIntArray>& sampleIds = pData->sampleIds;
-  std::vector<MDoubleArray>& weights = pData->weights;
-  std::vector<BaryCoords>& coords = pData->coords;
-  std::vector<MIntArray>& triangleVertices = pData->triangleVertices;
-  MMatrixArray& bindMatrices = pData->bindMatrices;
-
-  double radius = pData->radius;
-
-  MMatrix& driverMatrix = pData->driverMatrix;
-  std::vector<MIntArray>& perFaceVertices = pData->perFaceVertices;
-  std::vector<std::vector<MIntArray> >& perFaceTriangleVertices  =
-pData->perFaceTriangleVertices;
-
-  unsigned int taskStart = pThreadData->start;
-  unsigned int taskEnd = pThreadData->end;
-
-  // Pre-allocate the aligned storage for intrinsics calculation so we are not
-dynamically allocating
-  // memory in the loop.
-  std::vector<std::pair<int, float> > sortedCoords(3);
-  for (unsigned int i = taskStart; i < taskEnd; ++i) {
-    if (i >= inputPoints.length()) {
-      break;
-    }
-    // We need to calculate a bind matrix for each component.
-    // The closest point will be the origin of the coordinate system.
-    // The weighted normal of the vertices in the sample radius will be one
-axis.
-    // The weight vector from the closest point to the sample vertices will be
-the other axis.
-
-    MPoint inputPoint = inputPoints[i];
-    MPointOnMesh pointOnMesh;
-    if (subsetIntersector.isCreated()) {
-      // If we are rebinding, limit the closest point to the subset.
-      subsetIntersector.getClosestPoint(inputPoint, pointOnMesh);
-      inputPoint = MPoint(pointOnMesh.getPoint()) * driverMatrix;
-    }
-
-    intersector.getClosestPoint(inputPoint, pointOnMesh);
-    int faceId = pointOnMesh.faceIndex();
-    int triangleId = pointOnMesh.triangleIndex();
-
-    // Put point in world space so we can calculate the proper bind matrix.
-    MPoint closestPoint = MPoint(pointOnMesh.getPoint()) * driverMatrix;
-
-    // Get barycentric coordinates of closestPoint
-    triangleVertices[i] = perFaceTriangleVertices[faceId][triangleId];
-    GetBarycentricCoordinates(closestPoint,
-driverPoints[triangleVertices[i][0]], driverPoints[triangleVertices[i][1]],
-                              driverPoints[triangleVertices[i][2]],
-                              coords[i]);
-
-    // Sort coords highest to lowest so we can easility calculate the up vector
-    for (int j = 0; j < 3; ++j) {
-      sortedCoords[j] = std::pair<int, float>(triangleVertices[i][j],
-coords[i][j]);
-    }
-    std::sort(sortedCoords.begin(), sortedCoords.end(), SortCoords);
-    for (int j = 0; j < 3; ++j) {
-      triangleVertices[i][j] = sortedCoords[j].first;
-      coords[i][j] = sortedCoords[j].second;
-    }
-
-    // Get vertices of closest face so we can crawl out from them.
-    MIntArray& vertexList = perFaceVertices[faceId];
-
-    // Crawl the surface to find all the vertices within the sample radius.
-    std::map<int, double> distances;
-    CrawlSurface(closestPoint, vertexList, driverPoints, radius, adjacency,
-distances);
-
-    // Calculate the weight values per sampled vertex
-    CalculateSampleWeights(distances, radius, sampleIds[i], weights[i]);
-
-    // Get the components that form the orthonormal basis.
-    MPoint origin;
-    MVector up;
-    MVector normal;
-    (weights[i], coords[i], triangleVertices[i], driverPoints,
-                             driverNormals, sampleIds[i], alignedStorage,
-origin, up, normal); CreateMatrix(origin, normal, up, bindMatrices[i]);
-    bindMatrices[iCalculateBasisComponents] = bindMatrices[i].inverse();
-  }
-  return 0;
-}
-
-*/

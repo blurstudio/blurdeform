@@ -8,17 +8,6 @@ MObject blurSculpt::uvSet;
 MObject blurSculpt::smoothNormals;
 MObject blurSculpt::deformationType;
 MObject blurSculpt::inTime;
-MObject blurSculpt::vertexFaceIndices;
-MObject blurSculpt::vertexVertexIndices;
-
-MObject blurSculpt::vertexTriangleIndices;
-
-MObject blurSculpt::triangleFaceValues; // array of all the triangles
-MObject blurSculpt::vertex1;
-MObject blurSculpt::vertex2;
-MObject blurSculpt::vertex3;
-MObject blurSculpt::uValue;
-MObject blurSculpt::vValue;
 
 MObject blurSculpt::poses; // array of all the poses
 MObject blurSculpt::poseName;
@@ -37,63 +26,219 @@ blurSculpt::blurSculpt() {}
 blurSculpt::~blurSculpt() {}
 void *blurSculpt::creator() { return new blurSculpt(); }
 
-MVector blurSculpt::getTheTangent(
-    MPointArray &deformedMeshVerticesPos,
-    MArrayDataHandle &vertexTriangleIndicesData,
-    MArrayDataHandle &triangleFaceValuesData,
-    MArrayDataHandle &vertexVertexIndicesData,
-    MArrayDataHandle &vertexFaceIndicesData, MFnMesh &fnInputMesh,
-    MItMeshVertex &meshVertIt,
-
-    int theVertexNumber, int deformType
+void blurSculpt::getSmoothedNormal(
+    int indVtx, MIntArray &smoothNormalFound, MFloatVectorArray &normals,
+    MFloatVectorArray &smoothedNormals
 )
 {
-    MStatus returnStatus;
-    MVector tangent;
-    if (deformType == 2) { // use triangle
-        vertexTriangleIndicesData.jumpToArrayElement(theVertexNumber);
-        MDataHandle vertTriangleHandle =
-            vertexTriangleIndicesData.inputValue(&returnStatus);
-        int triangleIndex = vertTriangleHandle.asInt();
-
-        triangleFaceValuesData.jumpToArrayElement(triangleIndex);
-        MDataHandle triangleValuesData =
-            triangleFaceValuesData.inputValue(&returnStatus);
-        int v1 = triangleValuesData.child(vertex1).asInt();
-        int v2 = triangleValuesData.child(vertex2).asInt();
-        int v3 = triangleValuesData.child(vertex3).asInt();
-        double u = triangleValuesData.child(uValue).asDouble();
-        double v = triangleValuesData.child(vValue).asDouble();
-
-        tangent = deformedMeshVerticesPos[v3] * u +
-                  deformedMeshVerticesPos[v2] * v -
-                  deformedMeshVerticesPos[v1] * (u + v);
+    MIntArray surroundingVertices = connectedVertices[indVtx];
+    int nbSurrounding = surroundingVertices.length();
+    // float mult = 1. / (nbSurrounding + 1);
+    MVector sumNormal = MVector(normals[indVtx]);
+    for (int k = 0; k < nbSurrounding; ++k) {
+        int vtxAround = surroundingVertices[k];
+        sumNormal += MVector(normals[vtxAround]);
     }
-    else if (deformType == 3) { // useVertex
-        vertexVertexIndicesData.jumpToArrayElement(theVertexNumber);
-        MDataHandle tangentVertexData =
-            vertexVertexIndicesData.inputValue(&returnStatus);
-        int tangentVertexIndex = tangentVertexData.asInt();
-        tangent = deformedMeshVerticesPos[tangentVertexIndex] -
-                  deformedMeshVerticesPos[theVertexNumber];
-    }
-    else { // use maya deformType == 1
-        tangent = getVertexTangent(fnInputMesh, meshVertIt, theVertexNumber);
-        // OLD
-        /*
-        vertexFaceIndicesData.jumpToArrayElement(theVertexNumber);
-        MDataHandle vertFaceHandle =
-        vertexFaceIndicesData.inputValue(&returnStatus); int faceIndex =
-        vertFaceHandle.asInt();
-        // ask the value of the tangent for the wertex
-        fnInputMesh.getFaceVertexTangent(faceIndex, theVertexNumber, tangent,
-        MSpace::kWorld);
-        */
-    }
-    tangent.normalize();
-    return tangent;
+    // sumNormal = .5*sumNormal + .5*normals[vtxTmp];
+    sumNormal.normalize();
+    smoothedNormals.set(sumNormal, indVtx);
+    smoothNormalFound[indVtx] = 1;
 }
 
+void blurSculpt::getSmoothedTangent(
+    int indVtx, MFnMesh &fnInputMesh, MIntArray &smoothTangentFound,
+    MIntArray &tangentFound, MFloatVectorArray &tangents,
+    MFloatVectorArray &smoothTangents
+)
+{
+    // first get the tangent ------------
+    if (tangentFound[indVtx] == -1) {
+        tangents.set(
+            getVertexTangentFromFace(
+                fnInputMesh, connectedFaces[indVtx], indVtx
+            ),
+            indVtx
+        );
+        tangentFound[indVtx] == 1;
+    }
+    MVector tangent = MVector(tangents[indVtx]);
+
+    // for all connected vertices ------------
+    MIntArray surroundingVertices = connectedVertices[indVtx];
+    int nbSurrounding = surroundingVertices.length();
+    for (int k = 0; k < nbSurrounding; ++k) {
+        int vtxAround = surroundingVertices[k];
+        // get its tanget ------------
+        if (tangentFound[vtxAround] == -1) {
+            tangents.set(
+                getVertexTangentFromFace(
+                    fnInputMesh, connectedFaces[vtxAround], vtxAround
+                ),
+                vtxAround
+            );
+            tangentFound[vtxAround] == 1;
+        }
+        // sum it
+        tangent += tangents[vtxAround];
+    }
+    // normalize
+    tangent.normalize();
+    // set the smoothed tangent
+    smoothTangentFound[indVtx] = 1;
+    smoothTangents.set(tangent, indVtx);
+}
+
+MStatus blurSculpt::sumDeformation(
+    MArrayDataHandle
+        &deformationsHandle, // the current handle of the deformation
+    MFnMesh &fnInputMesh,    // the current mesh
+    float poseGainValue, float poseOffsetValue,
+    float curentMult, // the pose multiplication of gain and value
+    MMatrix &poseMat, MPoint &matPoint, bool useSmoothNormals, int deformType,
+    MIntArray &tangentFound, MIntArray &smoothTangentFound,
+    MIntArray &smoothNormalFound, // if we already have the tangets or not
+    MFloatVectorArray &normals, MFloatVectorArray &smoothedNormals,
+    MFloatVectorArray &tangents,
+    MFloatVectorArray &smoothTangents, // the values of tangents and normals
+    MPointArray &theVerticesSum
+) // the output array to fill
+{
+    MStatus returnStatus;
+    MDataHandle deformationFrameHandle =
+        deformationsHandle.inputValue(&returnStatus);
+
+    float gainValue = deformationFrameHandle.child(gain).asFloat();
+    float offsetValue = deformationFrameHandle.child(offset).asFloat();
+
+    float multiplier = curentMult * (poseGainValue + poseOffsetValue) *
+                       (gainValue + offsetValue);
+
+    MArrayDataHandle vectorMovementsHandle =
+        deformationFrameHandle.child(vectorMovements);
+    int nbVectorMvts = vectorMovementsHandle.elementCount();
+    MVector tangent, normal;
+    int theVertexNumber;
+    MDataHandle vectorHandle;
+
+    MMatrix mMatrix;
+    MPoint zeroPt(0, 0, 0);
+    MPoint theValue;
+    for (int vectorIndex = 0; vectorIndex < nbVectorMvts; vectorIndex++) {
+        vectorMovementsHandle.jumpToArrayElement(vectorIndex);
+        theVertexNumber = vectorMovementsHandle.elementIndex();
+        vectorHandle = vectorMovementsHandle.inputValue(&returnStatus);
+        float3 &vtxValue = vectorHandle.asFloat3();
+        if (deformType == 0) {
+            theValue = MPoint(
+                multiplier * vtxValue[0], multiplier * vtxValue[1],
+                multiplier * vtxValue[2]
+            );
+            theValue = theValue * poseMat - matPoint;
+        }
+        else {
+            if (useSmoothNormals) {
+                // ---- recompute normal  smoothed -----
+                if (smoothNormalFound[theVertexNumber] == -1) {
+                    getSmoothedNormal(
+                        theVertexNumber, smoothNormalFound, normals,
+                        smoothedNormals
+                    );
+                }
+                normal = smoothedNormals[theVertexNumber];
+
+                // ---- recompute tangent smoothed -----
+                if (smoothTangentFound[theVertexNumber] == -1) {
+                    getSmoothedTangent(
+                        theVertexNumber, fnInputMesh, smoothTangentFound,
+                        tangentFound, tangents, smoothTangents
+                    );
+                }
+                tangent = smoothTangents[theVertexNumber];
+            }
+            else {
+                // -- get the tangent -------------
+                if (tangentFound[theVertexNumber] == -1) {
+                    tangent = getVertexTangentFromFace(
+                        fnInputMesh, connectedFaces[theVertexNumber],
+                        theVertexNumber
+                    );
+                    tangentFound[theVertexNumber] = 1;
+                    tangents.set(tangent, theVertexNumber);
+                }
+                tangent = tangents[theVertexNumber];
+                // -- directly get the normal -------------
+                normal = normals[theVertexNumber];
+            }
+
+            CreateMatrix(zeroPt, normal, tangent, mMatrix);
+            theValue = MPoint(
+                           multiplier * vtxValue[0], multiplier * vtxValue[1],
+                           multiplier * vtxValue[2]
+                       ) *
+                       mMatrix;
+        }
+        theValue += theVerticesSum[theVertexNumber];
+        theVerticesSum.set(theValue, theVertexNumber);
+    }
+    return returnStatus;
+}
+
+/*
+MVector blurSculpt::getTheTangent(MPointArray& deformedMeshVerticesPos,
+        MArrayDataHandle& vertexTriangleIndicesData,
+        MArrayDataHandle& triangleFaceValuesData,
+        MArrayDataHandle& vertexVertexIndicesData,
+        MArrayDataHandle& vertexFaceIndicesData,
+        MFnMesh& fnInputMesh,
+        MItMeshVertex& meshVertIt,
+
+        int theVertexNumber, int deformType)
+{
+        MStatus returnStatus;
+        MVector tangent;
+        if (deformType==2) {//use triangle
+                vertexTriangleIndicesData.jumpToArrayElement(theVertexNumber);
+                MDataHandle vertTriangleHandle =
+vertexTriangleIndicesData.inputValue(&returnStatus); int triangleIndex =
+vertTriangleHandle.asInt();
+
+                triangleFaceValuesData.jumpToArrayElement(triangleIndex);
+                MDataHandle triangleValuesData =
+triangleFaceValuesData.inputValue(&returnStatus); int v1 =
+triangleValuesData.child(vertex1).asInt(); int v2 =
+triangleValuesData.child(vertex2).asInt(); int v3 =
+triangleValuesData.child(vertex3).asInt(); double u =
+triangleValuesData.child(uValue).asDouble(); double v =
+triangleValuesData.child(vValue).asDouble();
+
+                tangent = deformedMeshVerticesPos[v3] * u +
+deformedMeshVerticesPos[v2] * v - deformedMeshVerticesPos[v1] * (u + v);
+        }
+        else if (deformType == 3) {//useVertex
+                vertexVertexIndicesData.jumpToArrayElement(theVertexNumber);
+                MDataHandle tangentVertexData =
+vertexVertexIndicesData.inputValue(&returnStatus); int tangentVertexIndex =
+tangentVertexData.asInt(); tangent = deformedMeshVerticesPos[tangentVertexIndex]
+- deformedMeshVerticesPos[theVertexNumber];
+        }
+        else { // use maya deformType == 1
+                tangent = getVertexTangent(fnInputMesh, meshVertIt,
+theVertexNumber);
+                //OLD
+
+                //vertexFaceIndicesData.jumpToArrayElement(theVertexNumber);
+                //MDataHandle vertFaceHandle =
+vertexFaceIndicesData.inputValue(&returnStatus);
+                //int faceIndex = vertFaceHandle.asInt();
+                // ---- ask the value of the tangent for the wertex
+                //fnInputMesh.getFaceVertexTangent(faceIndex, theVertexNumber,
+tangent, MSpace::kWorld);
+
+        }
+        tangent.normalize();
+        return tangent;
+}
+*/
 MStatus blurSculpt::initialize()
 {
     // local attribute initialization
@@ -121,19 +266,6 @@ MStatus blurSculpt::initialize()
     addAttribute(uvSet);
 
     // the type of deformation
-    /*
-    deformationType = enumAttr.create("deformationType", "dt", 0);
-    CHECK_MSTATUS(enumAttr.addField("localSpace", 0));
-    CHECK_MSTATUS(enumAttr.addField("mayaTangent", 1));
-    CHECK_MSTATUS(enumAttr.addField("computeTangent", 2));
-    CHECK_MSTATUS(enumAttr.addField("edgesTangent", 3));
-    CHECK_MSTATUS(enumAttr.setStorable(true));
-    CHECK_MSTATUS(enumAttr.setKeyable(false));
-    CHECK_MSTATUS(enumAttr.setReadable(true));
-    CHECK_MSTATUS(enumAttr.setWritable(true));
-    CHECK_MSTATUS(enumAttr.setCached(false));
-    //CHECK_MSTATUS(addAttribute(deformationType));
-    */
     deformationType =
         nAttr.create("deformationType", "dt", MFnNumericData::kInt, 0);
     nAttr.setStorable(true);
@@ -152,31 +284,24 @@ MStatus blurSculpt::initialize()
     nAttr.setKeyable(false);
     addAttribute(smoothNormals);
 
+    /*
     // relationShip face vertex
-    vertexFaceIndices = nAttr.create(
-        "vertexFaceIndices", "vertexFaceIndices", MFnNumericData::kInt, -1
-    );
-    nAttr.setArray(true);
-    nAttr.setStorable(true);
+    vertexFaceIndices = nAttr.create("vertexFaceIndices", "vertexFaceIndices",
+    MFnNumericData::kInt, -1); nAttr.setArray(true); nAttr.setStorable(true);
     nAttr.setHidden(true);
 
     addAttribute(vertexFaceIndices);
 
     // relationShip face vertex
-    vertexVertexIndices = nAttr.create(
-        "vertexVertexIndices", "vertexVertexIndices", MFnNumericData::kInt, -1
-    );
-    nAttr.setArray(true);
+    vertexVertexIndices = nAttr.create("vertexVertexIndices",
+    "vertexVertexIndices", MFnNumericData::kInt, -1); nAttr.setArray(true);
     nAttr.setStorable(true);
     nAttr.setHidden(true);
     addAttribute(vertexVertexIndices);
 
     // relationShip face vertex
-    vertexTriangleIndices = nAttr.create(
-        "vertexTriangleIndices", "vertexTriangleIndices", MFnNumericData::kInt,
-        -1
-    );
-    nAttr.setArray(true);
+    vertexTriangleIndices = nAttr.create("vertexTriangleIndices",
+    "vertexTriangleIndices", MFnNumericData::kInt, -1); nAttr.setArray(true);
     nAttr.setStorable(true);
     nAttr.setHidden(true);
     addAttribute(vertexTriangleIndices);
@@ -185,21 +310,19 @@ MStatus blurSculpt::initialize()
     vertex1 = nAttr.create("vertex1", "vertex1", MFnNumericData::kInt, -1);
     vertex2 = nAttr.create("vertex2", "vertex2", MFnNumericData::kInt, -1);
     vertex3 = nAttr.create("vertex3", "vertex3", MFnNumericData::kInt, -1);
-    uValue = nAttr.create("uValue", "uValue", MFnNumericData::kDouble);
+    uValue = nAttr.create("uValue", "uValue", MFnNumericData::kDouble );
     vValue = nAttr.create("vValue", "vValue", MFnNumericData::kDouble);
 
-    triangleFaceValues =
-        cAttr.create("triangleFaceValues", "triangleFaceValues");
-    cAttr.setArray(true);
+
+    triangleFaceValues = cAttr.create("triangleFaceValues",
+    "triangleFaceValues"); cAttr.setArray(true);
     cAttr.setUsesArrayDataBuilder(true);
     cAttr.setStorable(true);
     cAttr.setHidden(true);
-    cAttr.addChild(vertex1);
-    cAttr.addChild(vertex2);
-    cAttr.addChild(vertex3);
-    cAttr.addChild(uValue);
-    cAttr.addChild(vValue);
+    cAttr.addChild(vertex1); cAttr.addChild(vertex2); cAttr.addChild(vertex3);
+    cAttr.addChild(uValue); cAttr.addChild(vValue);
     addAttribute(triangleFaceValues);
+    */
 
     // add the stored poses
     // the string for the name of the pose
@@ -233,16 +356,10 @@ MStatus blurSculpt::initialize()
     // the offset of the deformation
     offset = nAttr.create("offset", "offset", MFnNumericData::kFloat, 0.);
     // the vectorMovement of the vertices
-    // vectorMovements = tAttr.create("vectorMovements", "vectorMovements",
-    // MFnPointArrayData::kPointArray, &stat);
-
     vectorMovements = nAttr.create(
         "vectorMovements", "vectorMovements", MFnNumericData::k3Float
     );
     nAttr.setArray(true);
-    // nAttr.setUsesArrayDataBuilder(true);
-    // nAttr.setStorable(true);
-    // nAttr.setIndexMatters(true);
 
     // create the compound object
     deformations = cAttr.create("deformations", "deformations");
@@ -355,31 +472,24 @@ MStatus blurSculpt::deform(
     MTime theTime = timeData.asTime();
     float theTime_value = theTime.value();
 
+    /*
     // relationShip vtx face
-    MArrayDataHandle vertexFaceIndicesData =
-        block.inputValue(vertexFaceIndices, &returnStatus);
-    if (MS::kSuccess != returnStatus)
-        return returnStatus;
+    MArrayDataHandle vertexFaceIndicesData = block.inputValue(vertexFaceIndices,
+    &returnStatus); if (MS::kSuccess != returnStatus) return returnStatus;
     // relationShip vtx vtx
     MArrayDataHandle vertexVertexIndicesData =
-        block.inputValue(vertexVertexIndices, &returnStatus);
-    if (MS::kSuccess != returnStatus)
-        return returnStatus;
+    block.inputValue(vertexVertexIndices, &returnStatus); if (MS::kSuccess !=
+    returnStatus) return returnStatus;
     // triangle vtx f
     MArrayDataHandle vertexTriangleIndicesData =
-        block.inputValue(vertexTriangleIndices, &returnStatus);
-    if (MS::kSuccess != returnStatus)
-        return returnStatus;
+    block.inputValue(vertexTriangleIndices, &returnStatus); if (MS::kSuccess !=
+    returnStatus) return returnStatus;
     // triangle data
     MArrayDataHandle triangleFaceValuesData =
-        block.inputValue(triangleFaceValues, &returnStatus);
-    if (MS::kSuccess != returnStatus)
-        return returnStatus;
-    /*
-    MDataHandle deformationTypeData = block.inputValue(deformationType,
-    &returnStatus); if (MS::kSuccess != returnStatus) return returnStatus; int
-    deformType = deformationTypeData.asInt();
+    block.inputValue(triangleFaceValues, &returnStatus); if (MS::kSuccess !=
+    returnStatus) return returnStatus;
     */
+
     /*
     MTime currentFrame = MAnimControl::currentTime();
     float theTime_value = float(currentFrame.value());
@@ -420,35 +530,32 @@ MStatus blurSculpt::deform(
     MDataHandle poseInputVal, poseNameHandle, poseGainHandle, poseOffsetHandle,
         poseEnabledHandle;
     MDataHandle deformationTypeData;
-    int deformType;
-    MDataHandle deformationFrameHandle, frameEnabledHandle, frameHandle,
-        gainHandle, offsetHandle, vectorHandle;
+    // int deformType;
+    // MDataHandle deformationFrameHandle, frameEnabledHandle , frameHandle,
+    // gainHandle, offsetHandle, vectorHandle ;
     MString thePoseName;
-    float theFrame, poseGainValue, poseOffsetValue, gainValue, offsetValue;
-    int theVertexNumber;
+    // float theFrame, poseGainValue, poseOffsetValue, gainValue, offsetValue;
+    // int theVertexNumber;
 
     // loop for each output conneted curves
     // MItMeshVertex vertexIter(oInputGeom);
-    MMatrix mMatrix;
-    MPoint theValue;
-    MDataHandle vertFaceHandle, vertTriangleHandle, triangleValuesData,
-        tangentVertexData;
-    MVector normal, tangent, cross, binormal;
-    int faceIndex, triangleIndex, tangentVertexIndex;
+    // MDataHandle vertFaceHandle, vertTriangleHandle, triangleValuesData,
+    // tangentVertexData; int faceIndex, triangleIndex, tangentVertexIndex;
+
+    // ---  get all normals at once ------------------------
     MFloatVectorArray normals;
     fnInputMesh.getVertexNormals(false, normals, MSpace::kWorld);
-
+    // ---  this data is to be build ------------------------
     MFloatVectorArray tangents(nbVertices), smoothTangents(nbVertices);
     MFloatVectorArray triangleTangents(nbVertices);
     MPointArray deformedMeshVerticesPos;
     fnInputMesh.getPoints(deformedMeshVerticesPos, MSpace::kObject);
 
-    // bool[] isTangentUsed = new bool[1000000]; // Crazy-fast initialization!
     MIntArray tangentFound(nbVertices, -1);       // init at -1
     MIntArray smoothTangentFound(nbVertices, -1); // init at -1
-
-    //
-    // smooth the normals
+    MIntArray smoothNormalFound(nbVertices, -1);  // init at -1
+    // -------------------- smooth the normals
+    // -----------------------------------------------
     MItMeshVertex vertexIter(oInputGeom);
     // MIntArray surroundingVertices;
     MFloatVectorArray smoothedNormals(nbVertices);
@@ -456,37 +563,39 @@ MStatus blurSculpt::deform(
         block.inputValue(smoothNormals, &returnStatus);
     bool useSmoothNormals = smoothNormalsData.asBool();
 
-    std::vector<MIntArray> perFaceConnectedVertices;
-    perFaceConnectedVertices.resize(nbVertices);
-    if (useSmoothNormals) {
+    // if init is false means is a new deformed or a recent opend scene, so
+    // create cache form scratch
+    if (!init) {
+        connectedVertices.clear();
+        connectedFaces.clear();
+
+        connectedVertices.resize(nbVertices);
+        connectedFaces.resize(nbVertices);
+
         for (int vtxTmp = 0; !vertexIter.isDone();
              vertexIter.next(), ++vtxTmp) {
-            MIntArray surroundingVertices;
+            MIntArray surroundingVertices, surroundingFaces;
             vertexIter.getConnectedVertices(surroundingVertices);
-            perFaceConnectedVertices[vtxTmp] = surroundingVertices;
-            int nbSurrounding = surroundingVertices.length();
-            // float mult = 1. / (nbSurrounding + 1);
-            MVector sumNormal = MVector(normals[vtxTmp]);
-            for (int k = 0; k < nbSurrounding; ++k) {
-                int vtxAround = surroundingVertices[k];
-                sumNormal += MVector(normals[vtxAround]);
-            }
-            // sumNormal = .5*sumNormal + .5*normals[vtxTmp];
-            sumNormal.normalize();
-            smoothedNormals.set(sumNormal, vtxTmp);
-        }
-    }
-    //
+            connectedVertices[vtxTmp] = surroundingVertices;
 
+            vertexIter.getConnectedFaces(surroundingFaces);
+            connectedFaces[vtxTmp] = surroundingFaces;
+        }
+        init = 1;
+    }
+
+    // -------------------- end compute smoothed normals
+    // -------------------------------
     int prevFrameIndex = 0, nextFrameIndex = 0;
     float prevFrame = 0, nextFrame = 0;
     bool hasPrevFrame = false, hasNextFrame = false;
     float prevMult = 0., nextMult = 0., multiplier = 0.;
-
+    int deformType;
+    float poseGainValue, poseOffsetValue, theFrame;
+    MDataHandle deformationFrameHandle, frameEnabledHandle, frameHandle;
     // MGlobal::displayInfo(MString("useTriangle : ") + useTriangle + MString("
     // useVertex : ") + useVertex);
-    MPoint zeroPt(0, 0, 0);
-    for (int poseIndex = 0; poseIndex < nbPoses; poseIndex++) {
+    for (unsigned int poseIndex = 0; poseIndex < nbPoses; poseIndex++) {
         // MPlug posePlug = allPosesPlug.elementByLogicalIndex(poseIndex);
         // posesHandle.jumpToArrayElement(poseIndex);
 
@@ -517,7 +626,7 @@ MStatus blurSculpt::deform(
             hasPrevFrame = false;
             hasNextFrame = false;
             // check the frames in between
-            for (int deformIndex = 0; deformIndex < nbDeformations;
+            for (unsigned int deformIndex = 0; deformIndex < nbDeformations;
                  deformIndex++) {
                 // deformationsHandle.jumpToArrayElement(deformIndex);
                 deformationFrameHandle =
@@ -569,194 +678,37 @@ MStatus blurSculpt::deform(
             MPoint matPoint = MPoint(0, 0, 0) * poseMat;
             if (hasPrevFrame) {
                 deformationsHandle.jumpToArrayElement(prevFrameIndex);
-                // deformationsHandle.jumpToElement(prevFrameIndex);
-                deformationFrameHandle =
-                    deformationsHandle.inputValue(&returnStatus);
 
-                // MGlobal::displayInfo(MString("     frame : ") + theFrame);
-                gainHandle = deformationFrameHandle.child(gain);
-                gainValue = gainHandle.asFloat();
-
-                offsetHandle = deformationFrameHandle.child(offset);
-                offsetValue = offsetHandle.asFloat();
-                multiplier = prevMult * (poseGainValue + poseOffsetValue) *
-                             (gainValue + offsetValue);
-
-                MArrayDataHandle vectorMovementsHandle =
-                    deformationFrameHandle.child(vectorMovements);
-                nbVectorMvts = vectorMovementsHandle.elementCount();
-                for (int vectorIndex = 0; vectorIndex < nbVectorMvts;
-                     vectorIndex++) {
-                    vectorMovementsHandle.jumpToArrayElement(vectorIndex);
-                    theVertexNumber = vectorMovementsHandle.elementIndex();
-                    // MGlobal::displayInfo(MString("         vtx : ") +
-                    // theVertexNumber);
-                    vectorHandle =
-                        vectorMovementsHandle.inputValue(&returnStatus);
-                    float3 &vtxValue = vectorHandle.asFloat3();
-                    // MPoint theValue (vtxValue);
-                    if (deformType == 0) {
-                        theValue = MPoint(
-                            multiplier * vtxValue[0], multiplier * vtxValue[1],
-                            multiplier * vtxValue[2]
-                        );
-                        theValue = theValue * poseMat - matPoint;
-                    }
-                    else { // self found
-                        if (tangentFound[theVertexNumber] == -1) {
-                            tangent = getTheTangent(
-                                deformedMeshVerticesPos,
-                                vertexTriangleIndicesData,
-                                triangleFaceValuesData, vertexVertexIndicesData,
-                                vertexFaceIndicesData, fnInputMesh, vertexIter,
-                                theVertexNumber, deformType
-                            );
-                            tangentFound[theVertexNumber] = 1;
-                            tangents.set(tangent, theVertexNumber);
-                        }
-                        else
-                            tangent = tangents[theVertexNumber];
-                        if (useSmoothNormals) {
-                            normal = smoothedNormals[theVertexNumber];
-                        }
-                        else {
-                            normal = normals[theVertexNumber];
-                        }
-                        // ---- recompute tangent smoothed -----
-                        if (useSmoothNormals &&
-                            deformType == 1) { // maya  deformation
-                            if (smoothTangentFound[theVertexNumber] == -1) {
-                                MIntArray surroundingVertices =
-                                    perFaceConnectedVertices[theVertexNumber];
-                                int nbSurrounding =
-                                    surroundingVertices.length();
-                                for (int k = 0; k < nbSurrounding; ++k) {
-                                    int vtxAround = surroundingVertices[k];
-                                    if (tangentFound[vtxAround] == -1) {
-                                        tangents.set(
-                                            getVertexTangent(
-                                                fnInputMesh, vertexIter,
-                                                vtxAround
-                                            ),
-                                            vtxAround
-                                        );
-                                        tangentFound[vtxAround] == 1;
-                                    }
-                                    tangent += tangents[vtxAround];
-                                }
-                                tangent.normalize();
-                                smoothTangentFound[theVertexNumber] = 1;
-                                smoothTangents.set(tangent, theVertexNumber);
-                            }
-                            else
-                                tangent = smoothTangents[theVertexNumber];
-                        }
-                        // ---- End recompute tangent smoothed -----
-
-                        CreateMatrix(zeroPt, normal, tangent, mMatrix);
-                        theValue = MPoint(
-                                       multiplier * vtxValue[0],
-                                       multiplier * vtxValue[1],
-                                       multiplier * vtxValue[2]
-                                   ) *
-                                   mMatrix;
-                    }
-                    theValue += theVerticesSum[theVertexNumber];
-                    theVerticesSum.set(theValue, theVertexNumber);
-                }
+                sumDeformation(
+                    deformationsHandle, // the current handle of the deformation
+                    fnInputMesh, poseGainValue, poseOffsetValue,
+                    prevMult, // the pose multiplication of gain and value
+                    poseMat, matPoint, useSmoothNormals, deformType,
+                    tangentFound, smoothTangentFound,
+                    smoothNormalFound, // if we already have the tangets or not
+                    normals, smoothedNormals, tangents,
+                    smoothTangents, // the values of tangents and normals
+                    // perFaceConnectedVertices, // the connected vertices
+                    // already stored   //   to remove !!!
+                    theVerticesSum
+                ); // the output array to fill
             }
             if (hasNextFrame) {
                 deformationsHandle.jumpToArrayElement(nextFrameIndex);
-                deformationFrameHandle =
-                    deformationsHandle.inputValue(&returnStatus);
 
-                gainHandle = deformationFrameHandle.child(gain);
-                gainValue = gainHandle.asFloat();
-
-                offsetHandle = deformationFrameHandle.child(offset);
-                offsetValue = offsetHandle.asFloat();
-                multiplier = nextMult * (poseGainValue + poseOffsetValue) *
-                             (gainValue + offsetValue);
-
-                MArrayDataHandle vectorMovementsHandle =
-                    deformationFrameHandle.child(vectorMovements);
-                nbVectorMvts = vectorMovementsHandle.elementCount();
-                for (int vectorIndex = 0; vectorIndex < nbVectorMvts;
-                     vectorIndex++) {
-                    vectorMovementsHandle.jumpToArrayElement(vectorIndex);
-                    theVertexNumber = vectorMovementsHandle.elementIndex();
-                    vectorHandle =
-                        vectorMovementsHandle.inputValue(&returnStatus);
-                    float3 &vtxValue = vectorHandle.asFloat3();
-                    if (deformType == 0) {
-                        theValue = MPoint(
-                            multiplier * vtxValue[0], multiplier * vtxValue[1],
-                            multiplier * vtxValue[2]
-                        );
-                        theValue = theValue * poseMat - matPoint;
-                    }
-                    else {
-                        if (tangentFound[theVertexNumber] == -1) {
-                            tangent = getTheTangent(
-                                deformedMeshVerticesPos,
-                                vertexTriangleIndicesData,
-                                triangleFaceValuesData, vertexVertexIndicesData,
-                                vertexFaceIndicesData, fnInputMesh, vertexIter,
-                                theVertexNumber, deformType
-                            );
-                            tangent.normalize();
-                            tangentFound[theVertexNumber] = 1;
-                            tangents.set(tangent, theVertexNumber);
-                        }
-                        else
-                            tangent = tangents[theVertexNumber];
-                        if (useSmoothNormals) {
-                            normal = smoothedNormals[theVertexNumber];
-                        }
-                        else {
-                            normal = normals[theVertexNumber];
-                        }
-                        // ---- recompute tangent smoothed -----
-                        if (useSmoothNormals &&
-                            deformType == 1) { // maya  deformation
-                            if (smoothTangentFound[theVertexNumber] == -1) {
-                                MIntArray surroundingVertices =
-                                    perFaceConnectedVertices[theVertexNumber];
-                                int nbSurrounding =
-                                    surroundingVertices.length();
-                                for (int k = 0; k < nbSurrounding; ++k) {
-                                    int vtxAround = surroundingVertices[k];
-                                    if (tangentFound[vtxAround] == -1) {
-                                        tangents.set(
-                                            getVertexTangent(
-                                                fnInputMesh, vertexIter,
-                                                vtxAround
-                                            ),
-                                            vtxAround
-                                        );
-                                        tangentFound[vtxAround] == 1;
-                                    }
-                                    tangent += tangents[vtxAround];
-                                }
-                                tangent.normalize();
-                                smoothTangentFound[theVertexNumber] = 1;
-                                smoothTangents.set(tangent, theVertexNumber);
-                            }
-                            else
-                                tangent = smoothTangents[theVertexNumber];
-                        }
-                        // ---- End recompute tangent smoothed -----
-                        CreateMatrix(zeroPt, normal, tangent, mMatrix);
-                        theValue = MPoint(
-                                       multiplier * vtxValue[0],
-                                       multiplier * vtxValue[1],
-                                       multiplier * vtxValue[2]
-                                   ) *
-                                   mMatrix;
-                    }
-                    theValue += theVerticesSum[theVertexNumber];
-                    theVerticesSum.set(theValue, theVertexNumber);
-                }
+                sumDeformation(
+                    deformationsHandle, // the current handle of the deformation
+                    fnInputMesh, poseGainValue, poseOffsetValue,
+                    nextMult, // the pose multiplication of gain and value
+                    poseMat, matPoint, useSmoothNormals, deformType,
+                    tangentFound, smoothTangentFound,
+                    smoothNormalFound, // if we already have the tangets or not
+                    normals, smoothedNormals, tangents,
+                    smoothTangents, // the values of tangents and normals
+                    // perFaceConnectedVertices, // the connected vertices
+                    // already stored   //   to remove !!!
+                    theVerticesSum
+                ); // the output array to fill
             }
         }
         posesHandle.next();
@@ -769,7 +721,7 @@ MStatus blurSculpt::deform(
         // pt *= omatinv;
         weight = weightValue(block, multiIndex, theindex);
         resPos = (pt + theVerticesSum[theindex]) * omat;
-        toset = (env * weight) * resPos + (1. - env * weight) * pt;
+        toset = double(env * weight) * resPos + double(1. - env * weight) * pt;
         iter.setPosition(toset);
     }
     return returnStatus;

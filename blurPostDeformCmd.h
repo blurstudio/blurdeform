@@ -32,30 +32,6 @@
 
 #include "common.h"
 
-struct BindData {
-    MPointArray inputPoints; /**< The world space points of the geometry to be
-                                wrapped. */
-    MFloatVectorArray
-        driverNormals; /**< The world space normals of the driver geometry. */
-    std::vector<MIntArray>
-        perFaceVertices; /**< The per-face vertex ids of the driver. */
-    std::vector<std::vector<MIntArray>>
-        perFaceTriangleVertices; /**< The per-face per-triangle vertex ids of
-                                    the driver. */
-    /**
-      Elements calculated in the threads.
-    */
-    std::vector<MIntArray> sampleIds;
-    std::vector<MDoubleArray> weights;
-    MMatrixArray bindMatrices;
-    std::vector<BaryCoords> coords;
-    std::vector<MIntArray> triangleVertices;
-};
-
-/**
-  The cvWrap command is used to create new cvWrap deformers and to import and
-  export wrap bindings.
-*/
 class blurSculptCmd : public MPxCommand {
   public:
     enum CommandMode {
@@ -72,15 +48,6 @@ class blurSculptCmd : public MPxCommand {
     virtual bool isUndoable() const;
     static void *creator();
     static MSyntax newSyntax();
-
-    /**
-      Distributes the ThreadData objects to the parallel threads.
-      @param[in] data The user defined data.  In this case, the ThreadData
-      array.
-      @param[in] pRoot Maya's root task.
-    */
-    // static void CreateTasks(void *data, MThreadRootTask *pRoot);
-    // static MThreadRetVal CalculateBindingTask(void *pParam);
 
     const static char *kName; /**< The name of the command. */
 
@@ -130,23 +97,12 @@ class blurSculptCmd : public MPxCommand {
     */
     MStatus GatherCommandArguments(const MArgList &args);
 
-    /**
-      Acquires the driver and driven dag paths from the input selection list.
-    */
     MStatus GetGeometryPaths();
 
-    /**
-      Creates a new wrap deformer.
-    */
-    // MStatus CreateWrapDeformer();
-
-    /**
-      Gets the latest cvWrap node in the history of the deformed shape.
-    */
-    MStatus computeBarycenters(); // adding a pose
+    // MStatus computeBarycenters(); // adding a pose
 
     MStatus GetLatestBlurSculptNode();
-    MStatus setFaceVertexRelationShip();
+    // MStatus setFaceVertexRelationShip();
     MStatus GetPreDeformedMesh(MObject &blurSculptNode, MDagPath &pathMesh);
 
     MStatus addAPose();                   // adding a pose
@@ -154,41 +110,7 @@ class blurSculptCmd : public MPxCommand {
     MStatus getListPoses();               // get list of poses
     MStatus getListFrames(int poseIndex); // get list of frames
 
-    /**
-      Calculates the binding data for the wrap deformer to work.
-      @param[in] pathBindMesh The path to the mesh to bind to.
-      @param[in] bindData The structure containing all the bind information.
-      @param[in,out] dgMod The modifier to hold all the plug operations.
-    */
-    // MStatus CalculateBinding(MDagPath& pathBindMesh, BindData& bindData,
-    // MDGModifier& dgMod);
-
-    /**
-      Gets the MDagPath of any existing bind wrap mesh so we don't have to
-      duplicate it for each new wrap.
-      @param[out] pathBindMesh Storage for path to an existing bind mesh
-    */
-    // MStatus GetExistingBindMesh(MDagPath &pathBindMesh);
-
-    /**
-      Calculates new binding data for the selected components.
-    */
-    // MStatus Rebind();
-
-    /**
-      Get the bind mesh connected to the wrap node.
-      @param[in] oWrapNode MObject to a cvWrap node..
-      @param[out] pathBindMesh The path to the bind mesh.
-    */
-    // MStatus GetBindMesh(MObject& oWrapNode, MDagPath& pathBindMesh);
-
-    /**
-      Creates the mesh with the subset of faces used to calculate the rebind.
-      @param[out] pathDriverSubset Path the new driver subset mesh.
-    */
-    // MStatus CreateRebindSubsetMesh(MDagPath& pathDriverSubset);
-
-    MString name_;                 /**< Name of cvWrap node to create. */
+    MString name_;                 /**< Name of blurSculpt node to create. */
     MString poseName_;             /**< name of the pose to work with. */
     MString targetMeshAdd_;        /**< name of the target mesh to compute the
                                       deformation for the current time  */

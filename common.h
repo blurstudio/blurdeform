@@ -26,8 +26,12 @@
 #include <immintrin.h>
 #include <xmmintrin.h>
 #endif
+
 MVector getVertexTangent(
     MFnMesh &fnInputMesh, MItMeshVertex &meshVertIt, int theVertexNumber
+);
+MVector getVertexTangentFromFace(
+    MFnMesh &fnInputMesh, MIntArray &connectedFaces, int theVertexNumber
 );
 
 // get a free index of a channel
