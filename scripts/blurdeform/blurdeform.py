@@ -37,6 +37,8 @@ import sip
 
 
 class BlurDeformDialog(Dialog):
+    addTimeLine = False
+
     currentBlurNode = ""
     currentGeom = ""
     currentPose = ""
@@ -303,11 +305,10 @@ class BlurDeformDialog(Dialog):
             cmds.setAttr(frameChannel + ".frameEnabled", isChecked)
 
     # ---------------------- display of ARRAY --------------------------------------
-
     def addKeyToTimePort(self, listDeformationsFrame):
         if self.addTimeLine:
             for keyTime in listDeformationsFrame:
-                self.blurTimeSlider.addDisplayKey(keyTime, 0, "limegreen")
+                self.blurTimeSlider.addDisplayKey(keyTime)
 
     def refreshListFrames(self):
         poseName = str(cmds.getAttr(self.currentPose + ".poseName"))
@@ -538,12 +539,6 @@ class BlurDeformDialog(Dialog):
             channelItem.setText(0, blrNode)
             channelItem.setText(1, geom)
             self.uiBlurNodesTW.addTopLevelItem(channelItem)
-
-        itemsHeight = 38 + len(blurNodes) * 17
-        minH = 50 if itemsHeight < 50 else itemsHeight
-        maxH = 150 if itemsHeight > 150 else itemsHeight
-        # self.uiBlurNodesTW.setMinimumHeight (minH)
-        # self.uiListDeformersGB.setMaximumHeight (maxH)
 
         QtCore.QObject.connect(
             self.uiBlurNodesTW,
@@ -799,7 +794,6 @@ class BlurDeformDialog(Dialog):
             self.doubleClickChannel,
         )
 
-        self.addTimeLine = False
         # time slider part
         if self.addTimeLine:
             self.blurTimeSlider = extraWidgets.TheTimeSlider(self)
@@ -819,6 +813,9 @@ class BlurDeformDialog(Dialog):
         cmds.scriptJob(kill=self.playBackScript, force=True)
 
     def refreshForShow(self):
+        if not cmds.pluginInfo("blurPostDeform", q=True, loaded=True):
+            cmds.loadPlugin("blurPostDeform")
+
         print("CALLING REFRESH OPENING")
         if self.addTimeLine:
             self.addtheCallBack()

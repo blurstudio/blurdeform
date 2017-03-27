@@ -104,17 +104,14 @@ class spinnerWidget(QtGui.QWidget):
 
 
 class KeyFrameBtn(QtGui.QPushButton):
+    redColor = "background-color: rgb(154, 10, 10);"
+    redLightColor = "background-color: #FF99FF;"
+    pressedColor = "background-color: rgb(255, 255, 255);"
+
     def delete(self):
         self.theTimeSlider.listKeys.remove(self)
-        if self.preKeyObj:
-            self.preKeyObj.nextKeyObj = self.nextKeyObj
-            self.preKeyObj.updatePosition()
-        if self.nextKeyObj:
-            self.nextKeyObj.preKeyObj = self.preKeyObj
-            self.nextKeyObj.updatePosition()
-
+        sip.delete(self)
         """                    
-        shiboken.delete(self.timeLabel)
         shiboken.delete(self.band)
         shiboken.delete(self)
         """
@@ -145,8 +142,7 @@ class KeyFrameBtn(QtGui.QPushButton):
             self.theTime = round(theTime, 3)
         else:
             self.theTime = int(theTime)
-
-        self.move(Xpos, 15)
+        self.updatePosition()
 
         # print "end  mouseMove event"
         super(KeyFrameBtn, self).mouseMoveEvent(event)
@@ -187,7 +183,7 @@ class KeyFrameBtn(QtGui.QPushButton):
                 endpb - startpb + 1.0
             )
 
-            self.setStyleSheet("background-color: rgb(255, 255, 255);")
+            self.setStyleSheet(self.pressedColor)
 
             # self.mainWindow.listKeysToMove = [(el, el.theTime) for el in self.theTimeSlider.getSortedListKeysObj() if el.checked ]
 
@@ -202,11 +198,9 @@ class KeyFrameBtn(QtGui.QPushButton):
     def mouseReleaseEvent(self, event):
         if self.prevTime != self.theTime:
             cmds.undoInfo(undoName="moveSeveralKeys", openChunk=True)
-            # self.updatePosition ()
-            # if self.preKeyObjToUpdate : self.preKeyObjToUpdate.updatePosition ()
+            self.updatePosition()
             cmds.undoInfo(undoName="moveSeveralKeys", closeChunk=True)
-
-        # super (KeyFrameBtn, self ).mouseReleaseEvent (event)
+        super(KeyFrameBtn, self).mouseReleaseEvent(event)
 
     def enterEvent(self, event):
         self.setStyleSheet("background-color: #FF99FF;")
@@ -215,9 +209,9 @@ class KeyFrameBtn(QtGui.QPushButton):
 
     def leaveEvent(self, event):
         if self.checked:
-            self.setStyleSheet("background-color: #FF99FF;")
+            self.setStyleSheet(self.redLightColor)
         else:
-            self.setStyleSheet("background-color: rgb(154, 10, 10);")
+            self.setStyleSheet(self.redColor)
 
         super(KeyFrameBtn, self).leaveEvent(event)
 
@@ -225,10 +219,10 @@ class KeyFrameBtn(QtGui.QPushButton):
         if not addSel:
             for el in self.theTimeSlider.listKeys:
                 el.checked = False
-                el.setStyleSheet("background-color: rgb(154, 10, 10);")
+                el.setStyleSheet(self.redColor)
         self.checked = True
         cmds.evalDeferred(self.setFocus)
-        self.setStyleSheet("background-color: #FF99FF;")
+        self.setStyleSheet(self.redLightColor)
 
     def updatePosition(self, startPos=None, oneKeySize=None, start=None, end=None):
         if start == None or end == None:
@@ -237,31 +231,9 @@ class KeyFrameBtn(QtGui.QPushButton):
 
         isVisible = self.theTime >= start and self.theTime <= end
 
-        if not isVisible:
-            # we're on the last frame
-            displayBand = not self.nextKeyObj and self.theTime < start
-            # we're on the first frame
-            displayBand = displayBand or (not self.preKeyObj and self.theTime > end)
-            if not displayBand and self.nextKeyObj:
-                # if next frame is in range
-                displayBand = (
-                    self.nextKeyObj.theTime >= start and self.nextKeyObj.theTime <= end
-                )
-                # or if this frame and next emglobe the timeRange
-                displayBand = (
-                    displayBand
-                    or self.theTime < start
-                    and self.nextKeyObj.theTime >= end
-                )
-
         # displayBand = True
         self.setVisible(isVisible)
-        self.timeLabel.setVisible(isVisible)
-        self.band.setVisible(isVisible or displayBand)
         if isVisible:
-            self.timeLabel.setText(str(self.theTime))
-
-        if isVisible or displayBand:
             if oneKeySize == None or startPos == None:
                 theTimeSlider_width = self.theTimeSlider.width()
                 startPos = theTimeSlider_width / 100.0 * 0.5
@@ -276,32 +248,10 @@ class KeyFrameBtn(QtGui.QPushButton):
             else:
                 self.resize(oneKeySize, 40)
 
-            timeLabelWidth = self.met.width(self.timeLabel.text())
-            self.timeLabel.move(Xpos + (oneKeySize - timeLabelWidth) * 0.5, 54)
-
-            if self.nextKeyObj:
-                nextTime = self.nextKeyObj.theTime
-            else:
-                nextTime = end + 2
-
-            posiEnd = (nextTime - start) * oneKeySize + startPos
-
-            if not self.preKeyObj:
-                self.band.resize(posiEnd, 10)
-                self.band.move(0, 32)
-            else:
-                self.band.resize(posiEnd - Xpos, 10)
-                self.band.move(Xpos + 3, 32)
-
-    def __init__(self, theTime, theTimeSlider, indAttr, col):
+    def __init__(self, theTime, theTimeSlider):
         super(KeyFrameBtn, self).__init__(None)
         self.checked = False
 
-        self.preKeyObj = None
-        self.nextKeyObj = None
-
-        self.indAttr = indAttr
-        self.col = col
         self.setCursor(QtGui.QCursor(QtCore.Qt.SplitHCursor))
         if theTime == int(theTime):
             self.theTime = int(theTime)
@@ -309,22 +259,11 @@ class KeyFrameBtn(QtGui.QPushButton):
             self.theTime = theTime
 
         self.theTimeSlider = theTimeSlider
+        self.mainWindow = theTimeSlider.mainWindow
 
         self.setParent(self.theTimeSlider)
         self.resize(6, 40)
-        self.setStyleSheet("background-color: rgb(154, 10, 10);")
-
-        self.timeLabel = QtGui.QLabel(str(self.theTime))
-        self.timeLabel.setParent(self.theTimeSlider)
-        self.timeLabel.setMinimumWidth(1000)
-        self.met = QtGui.QFontMetrics(self.timeLabel.font())
-
-        self.band = QtGui.QFrame()
-        self.band.setStyleSheet("background-color: {0};".format(self.col))
-        self.band.setParent(self.theTimeSlider)
-        self.band.lower()
-        self.band.hide()
-        self.band.resize(30, 10)
+        self.setStyleSheet(self.redColor)
 
         cmds.evalDeferred(self.updatePosition)
         self.show()
@@ -334,8 +273,8 @@ class TheTimeSlider(QtGui.QWidget):
     def getSortedListKeysObj(self):
         return sorted(self.listKeys, key=lambda ky: ky.theTime)
 
-    def addDisplayKey(self, theTime, indAttr, col):
-        keyFrameBtn = KeyFrameBtn(theTime, self, indAttr, col)
+    def addDisplayKey(self, theTime):
+        keyFrameBtn = KeyFrameBtn(theTime, self)
         self.listKeys.append(keyFrameBtn)
         return keyFrameBtn
 
