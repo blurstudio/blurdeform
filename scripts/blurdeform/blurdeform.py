@@ -11,7 +11,6 @@
 
 
 # we import from blurdev.gui vs. QtGui becuase there are some additional management features for running the Dialog in multiple environments
-from __future__ import print_function
 from blurdev.gui import Dialog
 from studio.gui.resource import Icons
 from PyQt4 import QtGui, QtCore
@@ -300,7 +299,7 @@ class BlurDeformDialog(Dialog):
 
         isChecked = item.checkState(0) == QtCore.Qt.Checked
         prevVal = cmds.getAttr(frameChannel + ".frameEnabled")
-        print("check", isChecked, prevVal)
+        # print "check",isChecked ,  prevVal
         if isChecked != prevVal:
             cmds.setAttr(frameChannel + ".frameEnabled", isChecked)
 
@@ -649,7 +648,7 @@ class BlurDeformDialog(Dialog):
                     foundPose = True
                     self.uiPosesTW.setCurrentItem(itemPose)
                     break
-            print("foundPose " + str(foundPose))
+            # print "foundPose " + str(foundPose )
             if not foundPose:
                 self.currentPose = ""
 
@@ -802,21 +801,21 @@ class BlurDeformDialog(Dialog):
         self.uiPoseGB.setChecked(False)
 
     def addtheCallBack(self):
-        print("ADD Call Back")
+        # print "ADD Call Back"
         self.playBackScript = cmds.scriptJob(
             e=["playbackRangeChanged", self.blurTimeSlider.updateKeys], protected=True
         )
         # scriptJob( kill=jobNum, force=True)
 
     def deleteScriptJob(self):
-        print("Delete Call Back")
+        # print "Delete Call Back"
         cmds.scriptJob(kill=self.playBackScript, force=True)
 
     def refreshForShow(self):
         if not cmds.pluginInfo("blurPostDeform", q=True, loaded=True):
             cmds.loadPlugin("blurPostDeform")
 
-        print("CALLING REFRESH OPENING")
+        # print "CALLING REFRESH OPENING"
         if self.addTimeLine:
             self.addtheCallBack()
 
