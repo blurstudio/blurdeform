@@ -24,7 +24,7 @@ class BlurAddPose(Dialog):
         else:
             self.parentWindow.addNewPose(
                 newName,
-                local=str(self.uiLocalDeformationRB.isChecked()),
+                local=self.uiLocalDeformationRB.isChecked(),
                 poseTransform=str(self.uiTransformLE.text()),
             )
             self.close()

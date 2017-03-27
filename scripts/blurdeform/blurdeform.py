@@ -542,8 +542,8 @@ class BlurDeformDialog(Dialog):
         itemsHeight = 38 + len(blurNodes) * 17
         minH = 50 if itemsHeight < 50 else itemsHeight
         maxH = 150 if itemsHeight > 150 else itemsHeight
-        self.uiBlurNodesTW.setMinimumHeight(minH)
-        self.uiListDeformersGB.setMaximumHeight(maxH)
+        # self.uiBlurNodesTW.setMinimumHeight (minH)
+        # self.uiListDeformersGB.setMaximumHeight (maxH)
 
         QtCore.QObject.connect(
             self.uiBlurNodesTW,
