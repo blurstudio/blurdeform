@@ -25,7 +25,7 @@ MObject blurSculpt::vectorMovements; // the vectors of movements
 blurSculpt::blurSculpt() {}
 blurSculpt::~blurSculpt() {}
 void *blurSculpt::creator() { return new blurSculpt(); }
-
+void blurSculpt::postConstructor() { setExistWithoutInConnections(true); }
 void blurSculpt::getSmoothedNormal(
     int indVtx, MIntArray &smoothNormalFound, MFloatVectorArray &normals,
     MFloatVectorArray &smoothedNormals
@@ -558,7 +558,6 @@ MStatus blurSculpt::deform(
     MIntArray smoothNormalFound(nbVertices, -1);  // init at -1
     // -------------------- smooth the normals
     // -----------------------------------------------
-    MItMeshVertex vertexIter(oInputGeom);
     // MIntArray surroundingVertices;
     MFloatVectorArray smoothedNormals(nbVertices);
     MDataHandle smoothNormalsData =
@@ -568,6 +567,7 @@ MStatus blurSculpt::deform(
     // if init is false means is a new deformed or a recent opend scene, so
     // create cache form scratch
     if (!init) {
+        MItMeshVertex vertexIter(oInputGeom);
         connectedVertices.resize(nbVertices);
         connectedFaces.resize(nbVertices);
         for (int vtxTmp = 0; !vertexIter.isDone();

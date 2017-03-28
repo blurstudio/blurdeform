@@ -80,6 +80,8 @@ class blurSculpt : public MPxDeformerNode {
         unsigned int multiIndex
     );
 
+    void postConstructor();
+
     // when the accessory is deleted, this node will clean itself up
     //
     virtual MObject &accessoryAttribute() const;
