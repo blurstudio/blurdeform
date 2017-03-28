@@ -41,8 +41,8 @@ void blurSculpt::getSmoothedNormal(
     }
     // sumNormal = .5*sumNormal + .5*normals[vtxTmp];
     sumNormal.normalize();
-    smoothedNormals.set(sumNormal, indVtx);
     smoothNormalFound[indVtx] = 1;
+    smoothedNormals.set(sumNormal, indVtx);
 }
 
 void blurSculpt::getSmoothedTangent(
@@ -59,7 +59,7 @@ void blurSculpt::getSmoothedTangent(
             ),
             indVtx
         );
-        tangentFound[indVtx] == 1;
+        tangentFound[indVtx] = 1;
     }
     MVector tangent = MVector(tangents[indVtx]);
 
@@ -76,7 +76,7 @@ void blurSculpt::getSmoothedTangent(
                 ),
                 vtxAround
             );
-            tangentFound[vtxAround] == 1;
+            tangentFound[vtxAround] = 1;
         }
         // sum it
         tangent += tangents[vtxAround];
@@ -433,7 +433,9 @@ MStatus blurSculpt::deform(
         return returnStatus;
 
     MObject oInputGeom = hInput.outputValue().child(inputGeom).asMesh();
-    MFnMesh fnInputMesh(oInputGeom);
+    MFnMesh fnInputMesh(oInputGeom, &returnStatus);
+    if (MS::kSuccess != returnStatus)
+        return returnStatus;
 
     // get the mesh before deformation, not after, or Idk
     /*
@@ -470,7 +472,7 @@ MStatus blurSculpt::deform(
     if (MS::kSuccess != returnStatus)
         return returnStatus;
     MTime theTime = timeData.asTime();
-    float theTime_value = theTime.value();
+    double theTime_value = theTime.value();
 
     /*
     // relationShip vtx face
@@ -526,7 +528,7 @@ MStatus blurSculpt::deform(
     // iterate through each point in the geometry
     MArrayDataHandle posesHandle = block.inputValue(poses, &returnStatus);
     unsigned int nbPoses = posesHandle.elementCount();
-    unsigned int nbDeformations, nbVectorMvts;
+    unsigned int nbDeformations;
     MDataHandle poseInputVal, poseNameHandle, poseGainHandle, poseOffsetHandle,
         poseEnabledHandle;
     MDataHandle deformationTypeData;
@@ -566,12 +568,8 @@ MStatus blurSculpt::deform(
     // if init is false means is a new deformed or a recent opend scene, so
     // create cache form scratch
     if (!init) {
-        connectedVertices.clear();
-        connectedFaces.clear();
-
         connectedVertices.resize(nbVertices);
         connectedFaces.resize(nbVertices);
-
         for (int vtxTmp = 0; !vertexIter.isDone();
              vertexIter.next(), ++vtxTmp) {
             MIntArray surroundingVertices, surroundingFaces;
@@ -671,7 +669,7 @@ MStatus blurSculpt::deform(
             if (hasPrevFrame && hasNextFrame) {
                 nextMult = float(theTime_value - prevFrame) /
                            float(nextFrame - prevFrame);
-                prevMult = 1. - nextMult;
+                prevMult = float(1. - nextMult);
             }
             MDataHandle poseMatrixData = poseInputVal.child(poseMatrix);
             MMatrix poseMat = poseMatrixData.asMatrix();

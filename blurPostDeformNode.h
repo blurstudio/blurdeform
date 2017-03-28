@@ -170,7 +170,7 @@ class blurSculpt : public MPxDeformerNode {
 
   private:
     // cached attributes
-    int init;
+    int init = 0;
     std::vector<MIntArray>
         connectedVertices; // use by MItMeshVertex getConnectedVertices
     std::vector<MIntArray>
