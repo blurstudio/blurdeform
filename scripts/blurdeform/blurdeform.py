@@ -760,7 +760,7 @@ class BlurDeformDialog(Dialog):
         cmds.select(self.currentGeom)
         cmds.HideSelectedObjects()
         cmds.select(self.resForDuplicate)
-        cmds.selectMode(component=True)
+        # cmds.selectMode (component=True)
 
     def exitEditMode(self):
         if cmds.objExists(self.resForDuplicate):
