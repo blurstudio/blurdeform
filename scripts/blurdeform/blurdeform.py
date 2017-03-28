@@ -731,7 +731,7 @@ class BlurDeformDialog(Dialog):
         if futureHistory:
             meshHist = cmds.ls(futureHistory, type="mesh")
             if transform:
-                (prt,) = cmds.listRelatives(meshHist, path=True, p=True)
+                (prt,) = cmds.listRelatives(meshHist[0], path=True, p=True)
                 return prt
             return meshHist[0]
         return ""
