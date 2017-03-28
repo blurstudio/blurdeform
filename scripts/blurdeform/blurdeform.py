@@ -19,7 +19,9 @@ from . import extraWidgets, blurAddPose
 from functools import partial
 
 _icons = {
+    "disconnect": Icons.getIcon("plug--minus"),
     "fromScene": Icons.getIcon("arrow-180"),
+    "toFrame": Icons.getIcon("arrow-curve-000-left"),
     "refresh": Icons.getIcon("arrow-circle-double"),
     "publish": Icons.getIcon("shotgun"),
     "Add": Icons.getIcon("plus-button"),
@@ -41,6 +43,31 @@ class BlurDeformDialog(Dialog):
     currentBlurNode = ""
     currentGeom = ""
     currentPose = ""
+
+    def removeSelectedVerticesFromFrame(self):
+        selectedVertices = cmds.ls(sl=True, fl=True)
+        if not selectedVertices:
+            return
+        verticesIndToDelete = [
+            int(el.split("[")[-1].split("]")[0])
+            for el in selectedVertices
+            if el.startswith(self.currentGeom)
+        ]
+        if not verticesIndToDelete:
+            return
+        selectedFrames = self.uiFramesTW.selectedItems()
+        if not selectedFrames:
+            return
+        for frameItem in selectedFrames:
+            frameName = str(frameItem.data(0, QtCore.Qt.UserRole).toString())
+            mvtIndices = cmds.getAttr(frameName + ".vectorMovements", mi=True)
+            if mvtIndices:
+                mvtIndices = map(int, mvtIndices)
+                toDeleteSet = set(verticesIndToDelete).intersection(set(mvtIndices))
+                for indVtx in toDeleteSet:
+                    cmds.removeMultiInstance(
+                        frameName + ".vectorMovements[{0}]".format(indVtx), b=True
+                    )
 
     # ---------------- All the Adds --------------------------------------------------------------
     def addDeformer(self):
@@ -258,6 +285,14 @@ class BlurDeformDialog(Dialog):
             cmds.connectAttr(
                 selection[0] + ".matrix", self.currentPose + ".poseMatrix", f=True
             )
+
+    def disConnectMatrix(self):
+        inConnections = cmds.listConnections(
+            self.currentPose + ".poseMatrix", s=True, d=False, p=True
+        )
+        if inConnections:
+            cmds.disconnectAttr(inConnections[0], self.currentPose + ".poseMatrix")
+        self.uiTransformLE.setText("N/A")
 
     def isValidFrame(self, newFrame, oldFrame=-1):
         poseName = str(cmds.getAttr(self.currentPose + ".poseName"))
@@ -666,9 +701,14 @@ class BlurDeformDialog(Dialog):
     # ------------------- POPUP ----------------------------------------------------
     def create_popup_menu(self, parent=None):
         self.popup_menu = QtGui.QMenu(parent)
-        self.popup_menu.addAction("jumpToFrame", self.jumpToFrame)
+        self.popup_menu.addAction(_icons["toFrame"], "jumpToFrame", self.jumpToFrame)
         self.popup_menu.addAction("select influenced vertices", self.selectVertices)
-        self.popup_menu.addAction("delete", self.delete_frame)
+        self.popup_menu.addAction(
+            "remove selected vertices (NO UNDO)", self.removeSelectedVerticesFromFrame
+        )
+        self.popup_menu.addAction(
+            _icons["Delete"], "delete (NO UNDO)", self.delete_frame
+        )
 
     def on_context_menu(self, event):
         pos = event.pos()
@@ -730,6 +770,9 @@ class BlurDeformDialog(Dialog):
 
         self.blueCol = QtGui.QColor(50, 50, 100)
 
+        self.uiDisconnectMatrixBTN.setIcon(_icons["disconnect"])
+        self.uiDisconnectMatrixBTN.setText("")
+
         self.uiRefreshBTN.setIcon(_icons["refresh"])
         self.uiRefreshBTN.setText("")
         self.uiFromSelectionBTN.setIcon(_icons["fromScene"])
@@ -785,6 +828,11 @@ class BlurDeformDialog(Dialog):
 
         QtCore.QObject.connect(
             self.uiPickTransformBTN, QtCore.SIGNAL("clicked()"), self.connectMatrix
+        )
+        QtCore.QObject.connect(
+            self.uiDisconnectMatrixBTN,
+            QtCore.SIGNAL("clicked()"),
+            self.disConnectMatrix,
         )
 
         QtCore.QObject.connect(
