@@ -1,6 +1,7 @@
 from maya import OpenMaya, OpenMayaMPx, OpenMayaUI, cmds, mel
 from PyQt4 import QtGui, QtCore
 import blurdev
+import sip
 
 
 # create a QtObject for not using  sip.wrapinstance too much
@@ -104,17 +105,17 @@ class spinnerWidget(QtGui.QWidget):
 
 
 class KeyFrameBtn(QtGui.QPushButton):
-    redColor = "background-color: rgb(154, 10, 10);"
-    redLightColor = "background-color: #FF99FF;"
+    _colors = {
+        "redColor": "background-color: rgb(154, 10, 10);",
+        "redLightColor": "background-color: rgb(255, 153, 255);",
+        "blueColor": "background-color: rgb(10, 10, 154);",
+        "blueLightColor": "background-color: rgb(153,255, 255);",
+    }
     pressedColor = "background-color: rgb(255, 255, 255);"
 
     def delete(self):
         self.theTimeSlider.listKeys.remove(self)
         sip.delete(self)
-        """                    
-        shiboken.delete(self.band)
-        shiboken.delete(self)
-        """
 
     def mouseMoveEvent(self, event):
         # print "begin  mouseMove event"
@@ -165,12 +166,19 @@ class KeyFrameBtn(QtGui.QPushButton):
         else:
             offsetKey = 1
 
+        self.duplicateMode = controlPressed
+
         if not self.checked:
             self.select(addSel=controlPressed)
         if event.button() == QtCore.Qt.RightButton:
-            self.mainWindow.currentKey = self
-            self.mainWindow.popMenu.exec_(event.globalPos())
+            index = self.theTimeSlider.listKeys.index(self)
+            itemFrame = self.mainWindow.uiFramesTW.topLevelItem(index)
+
+            self.mainWindow.clickedItem = itemFrame
+            self.mainWindow.popup_menu.exec_(event.globalPos())
+
         elif event.button() == QtCore.Qt.LeftButton:
+
             self.globalX = event.globalX()
             self.prevPos = self.pos()
             self.prevTime = self.theTime
@@ -190,39 +198,73 @@ class KeyFrameBtn(QtGui.QPushButton):
             self.start = startpb
             self.end = endpb
             self.startpb = startpb
-            super(KeyFrameBtn, self).mousePressEvent(event)
-        else:
-            super(KeyFrameBtn, self).mousePressEvent(event)
+
+            if self.duplicateMode:
+                self.theTimeSlider.addDisplayKey(self.prevTime, isEmpty=self.isEmpty)
+
+            """
+            super (KeyFrameBtn, self ).mousePressEvent (event)
+        else : 
+            super (KeyFrameBtn, self ).mousePressEvent (event)
+            """
         # print "end mousePress event"
 
     def mouseReleaseEvent(self, event):
-        if self.prevTime != self.theTime:
-            cmds.undoInfo(undoName="moveSeveralKeys", openChunk=True)
-            self.updatePosition()
-            cmds.undoInfo(undoName="moveSeveralKeys", closeChunk=True)
         super(KeyFrameBtn, self).mouseReleaseEvent(event)
+        if self.prevTime != self.theTime:
+
+            if self.duplicateMode:
+                self.mainWindow.duplicateFrame(self.prevTime, self.theTime)
+            else:
+                poseName = cmds.getAttr(self.mainWindow.currentPose + ".poseName")
+                listDeformationsFrame = cmds.blurSculpt(
+                    self.mainWindow.currentBlurNode,
+                    query=True,
+                    listFrames=True,
+                    poseName=str(poseName),
+                )
+
+                if self.theTime in listDeformationsFrame:
+                    self.mainWindow.refresh()
+                else:
+                    cmds.undoInfo(undoName="moveSeveralKeys", openChunk=True)
+                    self.updatePosition()
+                    self.doChangeTime()
+                    cmds.undoInfo(undoName="moveSeveralKeys", closeChunk=True)
+
+    def doChangeTime(self):
+        index = self.theTimeSlider.listKeys.index(self)
+        itemFrame = self.mainWindow.uiFramesTW.topLevelItem(index)
+        itemFrame.setText(0, str(self.theTime))
+        # check if refresh is necessary
+        self.mainWindow.refreshListFramesAndSelect(self.theTime)
 
     def enterEvent(self, event):
-        self.setStyleSheet("background-color: #FF99FF;")
         super(KeyFrameBtn, self).enterEvent(event)
         self.setFocus()
+        self.setStyleSheet(self.lightColor)
 
     def leaveEvent(self, event):
-        if self.checked:
-            self.setStyleSheet(self.redLightColor)
-        else:
-            self.setStyleSheet(self.redColor)
-
         super(KeyFrameBtn, self).leaveEvent(event)
+
+        if self.checked:
+            self.setStyleSheet(self.lightColor)
+        else:
+            self.setStyleSheet(self.baseColor)
 
     def select(self, addSel=False):
         if not addSel:
             for el in self.theTimeSlider.listKeys:
                 el.checked = False
-                el.setStyleSheet(self.redColor)
+                el.setStyleSheet(el.baseColor)
         self.checked = True
         cmds.evalDeferred(self.setFocus)
-        self.setStyleSheet(self.redLightColor)
+
+        # select in parent :
+        index = self.theTimeSlider.listKeys.index(self)
+        itemFrame = self.mainWindow.uiFramesTW.topLevelItem(index)
+        self.mainWindow.uiFramesTW.setCurrentItem(itemFrame)
+        self.setStyleSheet(self.lightColor)
 
     def updatePosition(self, startPos=None, oneKeySize=None, start=None, end=None):
         if start == None or end == None:
@@ -231,7 +273,6 @@ class KeyFrameBtn(QtGui.QPushButton):
 
         isVisible = self.theTime >= start and self.theTime <= end
 
-        # displayBand = True
         self.setVisible(isVisible)
         if isVisible:
             if oneKeySize == None or startPos == None:
@@ -248,9 +289,18 @@ class KeyFrameBtn(QtGui.QPushButton):
             else:
                 self.resize(oneKeySize, 40)
 
-    def __init__(self, theTime, theTimeSlider):
+    def __init__(self, theTime, theTimeSlider, isEmpty=False):
         super(KeyFrameBtn, self).__init__(None)
         self.checked = False
+        if isEmpty:
+            self.baseColor = self._colors["blueColor"]
+            self.lightColor = self._colors["blueLightColor"]
+        else:
+            self.baseColor = self._colors["redColor"]
+            self.lightColor = self._colors["redLightColor"]
+
+        self.isEmpty = isEmpty
+        self.duplicateMode = False
 
         self.setCursor(QtGui.QCursor(QtCore.Qt.SplitHCursor))
         if theTime == int(theTime):
@@ -263,18 +313,25 @@ class KeyFrameBtn(QtGui.QPushButton):
 
         self.setParent(self.theTimeSlider)
         self.resize(6, 40)
-        self.setStyleSheet(self.redColor)
+        self.setStyleSheet(self.baseColor)
 
         cmds.evalDeferred(self.updatePosition)
         self.show()
 
 
 class TheTimeSlider(QtGui.QWidget):
+    def deleteKeys(self):
+        # print "deleteKeys"
+        toDelete = [] + self.listKeys
+        for keyFrameBtn in toDelete:
+            keyFrameBtn.delete()
+        self.listKeys = []
+
     def getSortedListKeysObj(self):
         return sorted(self.listKeys, key=lambda ky: ky.theTime)
 
-    def addDisplayKey(self, theTime):
-        keyFrameBtn = KeyFrameBtn(theTime, self)
+    def addDisplayKey(self, theTime, isEmpty=False):
+        keyFrameBtn = KeyFrameBtn(theTime, self, isEmpty=isEmpty)
         self.listKeys.append(keyFrameBtn)
         return keyFrameBtn
 

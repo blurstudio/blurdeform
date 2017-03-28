@@ -4,13 +4,14 @@
 #
 #   :remarks    GUI to work with the blurSculpt plugin
 #
-#   :author     [author::email]
-#   :author     [author::company]
+#   :author     [author::guillaume@blur.com]
+#   :author     [author::blur]
 #   :date       03/22/17
 #
 
 
 # we import from blurdev.gui vs. QtGui becuase there are some additional management features for running the Dialog in multiple environments
+from __future__ import print_function
 from blurdev.gui import Dialog
 from studio.gui.resource import Icons
 from PyQt4 import QtGui, QtCore
@@ -37,8 +38,44 @@ from maya import cmds, mel
 import sip
 
 
+def orderMelList(listInd, onlyStr=True):
+    # listInd = [49, 60, 61, 62, 80, 81, 82, 83, 100, 101, 102, 103, 113, 119, 120, 121, 138, 139, 140, 158, 159, 178, 179, 198, 230, 231, 250, 251, 252, 270, 271, 272, 273, 274, 291, 292, 293, 319, 320, 321, 360,361,362]
+    listIndString = []
+    listIndStringAndCount = []
+
+    it = iter(listInd)
+    currentValue = it.next()
+    while True:
+        try:
+            firstVal = currentValue
+            theVal = firstVal
+            while currentValue == theVal:
+                currentValue = it.next()
+                theVal += 1
+            theVal -= 1
+            if firstVal != theVal:
+                theStr = "{0}:{1}".format(firstVal, theVal)
+            else:
+                theStr = str(firstVal)
+            listIndString.append(theStr)
+            listIndStringAndCount.append((theStr, theVal - firstVal + 1))
+
+        except StopIteration:
+            if firstVal != theVal:
+                theStr = "{0}:{1}".format(firstVal, theVal)
+            else:
+                theStr = str(firstVal)
+            listIndString.append(theStr)
+            listIndStringAndCount.append((theStr, theVal - firstVal + 1))
+            break
+    if onlyStr:
+        return listIndString
+    else:
+        return listIndStringAndCount
+
+
 class BlurDeformDialog(Dialog):
-    addTimeLine = False
+    addTimeLine = True
 
     currentBlurNode = ""
     currentGeom = ""
@@ -98,6 +135,61 @@ class BlurDeformDialog(Dialog):
 
         self.refreshListPoses(selectLast=True)
         # self.selectPose (poseName)
+
+    def duplicateFrame(self, prevTime, currTime):
+        with extraWidgets.WaitCursorCtxt():
+            poseName = cmds.getAttr(self.currentPose + ".poseName")
+            listDeformationsIndices = map(
+                int, cmds.getAttr(self.currentPose + ".deformations", mi=True)
+            )
+
+            listDeformationsFrame = cmds.blurSculpt(
+                self.currentBlurNode,
+                query=True,
+                listFrames=True,
+                poseName=str(poseName),
+            )
+            if prevTime not in listDeformationsFrame:
+                return
+            oldIndex = listDeformationsFrame.index(prevTime)
+
+            dicVal = {"pose": self.currentPose}
+            dicVal["frame"] = max(listDeformationsIndices) + 1
+            dicVal["prevFrame"] = oldIndex
+
+            # currTime = cmds.currentTime (q=True)
+
+            for att in ["gain", "offset", "frameEnabled"]:
+                val = cmds.getAttr(
+                    "{pose}.deformations[{prevFrame}].".format(**dicVal) + att
+                )
+                cmds.setAttr(
+                    "{pose}.deformations[{frame}].".format(**dicVal) + att, val
+                )
+            cmds.setAttr(
+                "{pose}.deformations[{frame}].frame".format(**dicVal), currTime
+            )
+
+            indicesVectorMvt = cmds.getAttr(
+                "{pose}.deformations[{prevFrame}].vectorMovements".format(**dicVal),
+                mi=True,
+            )
+            if indicesVectorMvt:
+                for ind in indicesVectorMvt:
+                    dicVal["vecInd"] = ind
+                    (val,) = cmds.getAttr(
+                        "{pose}.deformations[{prevFrame}].vectorMovements[{vecInd}]".format(
+                            **dicVal
+                        )
+                    )
+                    cmds.setAttr(
+                        "{pose}.deformations[{frame}].vectorMovements[{vecInd}]".format(
+                            **dicVal
+                        ),
+                        *val
+                    )
+
+            self.refreshListFrames()
 
     def addNewFrame(self):
         cmds.selectMode(object=True)
@@ -256,6 +348,32 @@ class BlurDeformDialog(Dialog):
         if isChecked != prevVal:
             cmds.setAttr(blurPose + ".poseEnabled", isChecked)
 
+    def refreshListFramesAndSelect(self, timeToSelect):
+        poseName = str(cmds.getAttr(self.currentPose + ".poseName"))
+        listDeformationsFrame = sorted(
+            cmds.blurSculpt(
+                self.currentBlurNode,
+                query=True,
+                listFrames=True,
+                poseName=str(poseName),
+            )
+        )
+        listCurrentFrames = [
+            float(self.uiFramesTW.topLevelItem(i).text(0))
+            for i in range(self.uiFramesTW.topLevelItemCount())
+        ]
+        if listCurrentFrames != listDeformationsFrame:
+            self.refreshListFrames()
+            cmds.evalDeferred(partial(self.selectFrameTime, timeToSelect))
+
+    def selectFrameTime(self, timeToSelect):
+        for i in range(self.uiFramesTW.topLevelItemCount()):
+            itemFrame = self.uiFramesTW.topLevelItem(i)
+            theTime = float(itemFrame.text(0))
+            if theTime == timeToSelect:
+                self.uiFramesTW.setCurrentItem(itemFrame)
+                break
+
     def refreshPoseInfo(self, item, prevItem):
         blurPose = str(item.data(0, QtCore.Qt.UserRole).toString())
         self.currentPose = blurPose
@@ -339,11 +457,18 @@ class BlurDeformDialog(Dialog):
         if isChecked != prevVal:
             cmds.setAttr(frameChannel + ".frameEnabled", isChecked)
 
+    def selectFrame(self, item, prevItem):
+        # print "selectFrame"
+        indexFrame = self.uiFramesTW.indexOfTopLevelItem(item)
+        if self.addTimeLine:
+            self.blurTimeSlider.listKeys[indexFrame].select()
+
     # ---------------------- display of ARRAY --------------------------------------
     def addKeyToTimePort(self, listDeformationsFrame):
         if self.addTimeLine:
-            for keyTime in listDeformationsFrame:
-                self.blurTimeSlider.addDisplayKey(keyTime)
+            self.blurTimeSlider.deleteKeys()
+            for keyTime, isEmpty in listDeformationsFrame:
+                self.blurTimeSlider.addDisplayKey(keyTime, isEmpty=isEmpty)
 
     def refreshListFrames(self):
         poseName = str(cmds.getAttr(self.currentPose + ".poseName"))
@@ -351,6 +476,11 @@ class BlurDeformDialog(Dialog):
             self.uiFramesTW,
             QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
             self.changeTheFrame,
+        )
+        QtCore.QObject.disconnect(
+            self.uiFramesTW,
+            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
+            self.selectFrame,
         )
 
         self.uiFramesTW.clear()
@@ -360,16 +490,13 @@ class BlurDeformDialog(Dialog):
         listDeformationsFrame = cmds.blurSculpt(
             self.currentBlurNode, query=True, listFrames=True, poseName=str(poseName)
         )
-
+        listFramesViewPort = []
         if listDeformationsFrame:
             listDeformationsIndices = cmds.getAttr(
                 self.currentPose + ".deformations", mi=True
             )
             if not listDeformationsIndices:
                 listDeformationsIndices = []
-
-            if listDeformationsFrame:
-                self.addKeyToTimePort(listDeformationsFrame)
 
             listDeformationsFrameandIndices = [
                 (listDeformationsFrame[i], listDeformationsIndices[i])
@@ -411,6 +538,9 @@ class BlurDeformDialog(Dialog):
                     frameItem.setBackground(0, QtGui.QBrush(self.blueCol))
                     frameItem.setText(1, "\u00D8")
                     frameItem.setTextAlignment(1, QtCore.Qt.AlignCenter)
+                    listFramesViewPort.append((deformFrame, True))
+                else:
+                    listFramesViewPort.append((deformFrame, False))
 
                 self.uiFramesTW.addTopLevelItem(frameItem)
                 newWidgetGain = extraWidgets.spinnerWidget(
@@ -429,6 +559,9 @@ class BlurDeformDialog(Dialog):
                 self.uiFramesTW.setItemWidget(frameItem, 2, newWidgetGain)
                 self.uiFramesTW.setItemWidget(frameItem, 3, newWidgetOffset)
 
+        if self.addTimeLine:
+            self.addKeyToTimePort(listFramesViewPort)
+
         vh = self.uiFramesTW.header()
         vh.setStretchLastSection(False)
         vh.setResizeMode(QtGui.QHeaderView.Stretch)
@@ -443,6 +576,11 @@ class BlurDeformDialog(Dialog):
         cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 2, 50))
         cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 3, 50))
 
+        QtCore.QObject.connect(
+            self.uiFramesTW,
+            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
+            self.selectFrame,
+        )
         QtCore.QObject.connect(
             self.uiFramesTW,
             QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
@@ -650,6 +788,11 @@ class BlurDeformDialog(Dialog):
             self.changeTheFrame,
         )
         QtCore.QObject.disconnect(
+            self.uiFramesTW,
+            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
+            self.selectFrame,
+        )
+        QtCore.QObject.disconnect(
             self.uiPosesTW,
             QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
             self.refreshPoseInfo,
@@ -724,10 +867,14 @@ class BlurDeformDialog(Dialog):
         frameChannel = str(self.clickedItem.data(0, QtCore.Qt.UserRole).toString())
         vertices = cmds.getAttr(frameChannel + ".vectorMovements", mi=True)
         if vertices:
-            toSelect = [
-                "{0}.vtx[{1}]".format(self.currentGeom, vtx) for vtx in vertices
-            ]
-            cmds.select(toSelect)
+            with extraWidgets.WaitCursorCtxt():
+                # toSelect = ["{0}.vtx[{1}]".format (self.currentGeom, vtx) for vtx in vertices]
+                toSelect = [
+                    "{0}.vtx[{1}]".format(self.currentGeom, el)
+                    for el in orderMelList(vertices)
+                ]
+
+                cmds.select(toSelect)
         else:
             cmds.select(clear=True)
 
@@ -743,7 +890,6 @@ class BlurDeformDialog(Dialog):
                 continue
         blurdev.launch(blurAddPose.BlurAddPose, instance=True)
         self.addPoseWin.refreshWindow()
-
         """
         addPoseWindow = blurAddPose.BlurAddPose ( parentWin = self)
         addPoseWindow.show ()
@@ -862,11 +1008,21 @@ class BlurDeformDialog(Dialog):
 
     def refreshForShow(self):
         if not cmds.pluginInfo("blurPostDeform", q=True, loaded=True):
-            cmds.loadPlugin("blurPostDeform")
+            try:
+                cmds.loadPlugin("blurPostDeform")
+            except:
+                currentVersion = cmds.about(v=True)
+                version = "2016.5" if currentVersion == "2016 Extension 2" else "2016"
+                productionPath = r"\\source\production\workgroups\maya\{0}\blur\plug-ins\blurPostDeform.mll".format(
+                    version
+                )
+                print(productionPath)
+                cmds.loadPlugin(productionPath)
 
         # print "CALLING REFRESH OPENING"
         if self.addTimeLine:
             self.addtheCallBack()
+            self.blurTimeSlider.deleteKeys()
 
         self.currentBlurNode = ""
         self.currentGeom = ""
