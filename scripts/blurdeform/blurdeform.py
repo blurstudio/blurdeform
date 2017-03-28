@@ -189,7 +189,7 @@ class BlurDeformDialog(Dialog):
                         *val
                     )
 
-            self.refreshListFrames()
+        cmds.evalDeferred(self.refreshListFrames)
 
     def addNewFrame(self):
         cmds.selectMode(object=True)
