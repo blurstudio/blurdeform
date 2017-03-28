@@ -277,6 +277,7 @@ class BlurDeformDialog(Dialog):
         self.uiTransformLE.setVisible(deformationType == 0)
         self.uiMatLBL.setVisible(deformationType == 0)
         self.uiPickTransformBTN.setVisible(deformationType == 0)
+        self.uiDisconnectMatrixBTN.setVisible(deformationType == 0)
 
     def connectMatrix(self):
         selection = cmds.ls(sl=True, tr=True)
