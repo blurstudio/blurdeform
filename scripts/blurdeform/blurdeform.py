@@ -195,8 +195,13 @@ class BlurDeformDialog(Dialog):
         cmds.selectMode(object=True)
         selection = cmds.ls(sl=True)
         if len(selection) != 1:
-            cmds.confirmDialog(m="error select only one mesh")
-            return
+            if cmds.objExists(self.resForDuplicate):
+                meshToAddAsFrame = self.resForDuplicate
+            else:
+                cmds.confirmDialog(m="error select only one mesh")
+                return
+        else:
+            meshToAddAsFrame = selection[0]
 
         # get the index
         if self.currentPose == "":
@@ -238,9 +243,9 @@ class BlurDeformDialog(Dialog):
                         b=True,
                     )
 
-        cmds.blurSculpt(self.currentGeom, addAtTime=selection[0], poseName=poseName)
+        cmds.blurSculpt(self.currentGeom, addAtTime=meshToAddAsFrame, poseName=poseName)
         # theBasePanel = self.doIsolate (state=0)
-        cmds.hide(selection[0])
+        cmds.hide(meshToAddAsFrame)
         self.exitEditMode()
 
         self.refresh()
