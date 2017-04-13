@@ -30,6 +30,7 @@ _icons = {
     "empty": Icons.getIcon("border-down"),
     "cancelEdit": Icons.getIcon(r"icons8\office\PNG\16\Editing\no_edit-16"),
     "edit": Icons.getIcon(r"icons8\office\PNG\16\Very_Basic\edit-16"),
+    "gear": Icons.getIcon(r"gear"),
 }
 
 import blurdev
@@ -106,6 +107,20 @@ class BlurDeformDialog(Dialog):
                         frameName + ".vectorMovements[{0}]".format(indVtx), b=True
                     )
 
+    def getListDeformationFrames(self):
+        poseName = cmds.getAttr(self.currentPose + ".poseName")
+        defIndices = cmds.getAttr(self.currentPose + ".deformations", mi=True)
+        if not defIndices:
+            defIndices = []
+        listDeformationsIndices = map(int, defIndices)
+        listDeformationsFrame = [
+            cmds.getAttr(self.currentPose + ".deformations[{0}].frame".format(ind))
+            for ind in listDeformationsIndices
+        ]
+
+        # listDeformationsFrame = cmds.blurSculpt (self.currentBlurNode,query = True,listFrames = True, poseName=str(poseName) )
+        return listDeformationsFrame
+
     # ---------------- All the Adds --------------------------------------------------------------
     def addDeformer(self):
         with extraWidgets.WaitCursorCtxt():
@@ -143,12 +158,8 @@ class BlurDeformDialog(Dialog):
                 int, cmds.getAttr(self.currentPose + ".deformations", mi=True)
             )
 
-            listDeformationsFrame = cmds.blurSculpt(
-                self.currentBlurNode,
-                query=True,
-                listFrames=True,
-                poseName=str(poseName),
-            )
+            # listDeformationsFrame = cmds.blurSculpt (self.currentBlurNode,query = True,listFrames = True, poseName=str(poseName) )
+            listDeformationsFrame = self.getListDeformationFrames()
             if prevTime not in listDeformationsFrame:
                 return
             oldIndex = listDeformationsFrame.index(prevTime)
@@ -202,20 +213,20 @@ class BlurDeformDialog(Dialog):
                 return
         else:
             meshToAddAsFrame = selection[0]
+            if self.doKeepShapes:
+                self.resForDuplicate = meshToAddAsFrame  # keep for later renaming
 
         # get the index
         if self.currentPose == "":
             res = cmds.confirmDialog(m="select a pose in the poses list  (left)")
             return
 
-        listPoses = cmds.blurSculpt(self.currentBlurNode, query=True, listPoses=True)
         currTime = cmds.currentTime(q=True)
         dicVal = {"blurNode": self.currentBlurNode, "currentPose": self.currentPose}
         poseName = cmds.getAttr(self.currentPose + ".poseName")
 
-        listDeformationsFrame = cmds.blurSculpt(
-            self.currentBlurNode, query=True, listFrames=True, poseName=poseName
-        )
+        # listDeformationsFrame = cmds.blurSculpt (self.currentBlurNode,query = True,listFrames = True, poseName=poseName )
+        listDeformationsFrame = self.getListDeformationFrames()
         if not listDeformationsFrame:
             listDeformationsFrame = []
         listDeformationsIndices = cmds.getAttr(
@@ -355,14 +366,8 @@ class BlurDeformDialog(Dialog):
 
     def refreshListFramesAndSelect(self, timeToSelect):
         poseName = str(cmds.getAttr(self.currentPose + ".poseName"))
-        listDeformationsFrame = sorted(
-            cmds.blurSculpt(
-                self.currentBlurNode,
-                query=True,
-                listFrames=True,
-                poseName=str(poseName),
-            )
-        )
+        # listDeformationsFrame = sorted (cmds.blurSculpt (self.currentBlurNode,query = True,listFrames = True, poseName=str(poseName) ))
+        listDeformationsFrame = sorted(self.getListDeformationFrames())
         listCurrentFrames = [
             float(self.uiFramesTW.topLevelItem(i).text(0))
             for i in range(self.uiFramesTW.topLevelItemCount())
@@ -420,9 +425,9 @@ class BlurDeformDialog(Dialog):
 
     def isValidFrame(self, newFrame, oldFrame=-1):
         poseName = str(cmds.getAttr(self.currentPose + ".poseName"))
-        listDeformationsFrame = cmds.blurSculpt(
-            self.currentBlurNode, query=True, listFrames=True, poseName=str(poseName)
-        )
+        # listDeformationsFrame = cmds.blurSculpt (self.currentBlurNode,query = True,listFrames = True, poseName=str(poseName) )
+        listDeformationsFrame = self.getListDeformationFrames()
+
         if not listDeformationsFrame:
             listDeformationsFrame = []
         if listDeformationsFrame and oldFrame:
@@ -492,9 +497,8 @@ class BlurDeformDialog(Dialog):
         self.uiFramesTW.setColumnCount(4)
         self.uiFramesTW.setHeaderLabels(["frame", "\u00D8", "gain", "offset"])
 
-        listDeformationsFrame = cmds.blurSculpt(
-            self.currentBlurNode, query=True, listFrames=True, poseName=str(poseName)
-        )
+        # listDeformationsFrame = cmds.blurSculpt (self.currentBlurNode,query = True,listFrames = True, poseName=str(poseName) )
+        listDeformationsFrame = self.getListDeformationFrames()
         listFramesViewPort = []
         if listDeformationsFrame:
             listDeformationsIndices = cmds.getAttr(
@@ -620,8 +624,14 @@ class BlurDeformDialog(Dialog):
         dicVal = {"blurNode": self.currentBlurNode}
 
         posesIndices = map(int, cmds.getAttr(self.currentBlurNode + ".poses", mi=True))
-        for indNm, thePose in enumerate(listPoses):
-            logicalInd = posesIndices[indNm]
+        # for indNm, thePose in enumerate(listPoses) :
+        # 	logicalInd =posesIndices [indNm]
+        for logicalInd in posesIndices:
+            dicVal["indPose"] = logicalInd
+            thePose = cmds.getAttr(
+                "{blurNode}.poses[{indPose}].poseName".format(**dicVal)
+            )
+
             channelItem = QtGui.QTreeWidgetItem()
             channelItem.setText(0, thePose)
             channelItem.setText(1, "0.")
@@ -768,9 +778,20 @@ class BlurDeformDialog(Dialog):
         # cmds.selectMode (component=True)
 
     def exitEditMode(self):
-        if cmds.objExists(self.resForDuplicate):
+        if cmds.objExists(self.resForDuplicate) and not self.keepShapes:
             cmds.delete(self.resForDuplicate)
             self.resForDuplicate = ""
+            doRename = False
+        else:
+            doRename = True
+
+        if doRename:
+            poseName = cmds.getAttr(self.currentPose + ".poseName")
+            newName = "{0}_{1}_f{2}_".format(
+                self.currentBlurNode, poseName, int(cmds.currentTime(q=True))
+            )
+            cmds.rename(self.resForDuplicate, newName)
+
         cmds.showHidden(self.currentGeom, a=True)
         cmds.selectMode(object=True)
 
@@ -859,6 +880,27 @@ class BlurDeformDialog(Dialog):
             _icons["Delete"], "delete (NO UNDO)", self.delete_frame
         )
 
+        self.popup_option = QtGui.QMenu(parent)
+        newAction = self.popup_option.addAction("keep Shapes", self.doKeepShapes)
+        newAction.setCheckable(True)
+
+        if cmds.optionVar(exists="blurScluptKeep"):
+            setChecked = cmds.optionVar(q="blurScluptKeep") == 1
+        else:
+            setChecked = False
+        self.keepShapes = setChecked
+
+        newAction.setChecked(setChecked)
+        self.uiOptionsBTN.mousePressEvent = self.popMenuMousePressEvent
+
+    def popMenuMousePressEvent(self, event):
+        self.popup_option.exec_(event.globalPos())
+
+    def doKeepShapes(self):
+        self.keepShapes = self.popup_option.actions()[-1].isChecked()
+        intVal = 1 if self.keepShapes else 0
+        cmds.optionVar(intValue=("blurScluptKeep", intVal))
+
     def on_context_menu(self, event):
         pos = event.pos()
         self.clickedItem = self.uiFramesTW.itemAt(pos)
@@ -934,6 +976,9 @@ class BlurDeformDialog(Dialog):
 
         self.uiEditModeBTN.setIcon(_icons["edit"])
         self.uiExitEditModeBTN.setIcon(_icons["cancelEdit"])
+
+        self.uiOptionsBTN.setIcon(_icons["gear"])
+        self.uiOptionsBTN.setText("")
 
         self.create_popup_menu()
         self.uiFramesTW.contextMenuEvent = self.on_context_menu
