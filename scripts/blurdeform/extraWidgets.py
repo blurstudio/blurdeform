@@ -216,13 +216,9 @@ class KeyFrameBtn(QtGui.QPushButton):
             if self.duplicateMode:
                 self.mainWindow.duplicateFrame(self.prevTime, self.theTime)
             else:
-                poseName = cmds.getAttr(self.mainWindow.currentPose + ".poseName")
-                listDeformationsFrame = cmds.blurSculpt(
-                    self.mainWindow.currentBlurNode,
-                    query=True,
-                    listFrames=True,
-                    poseName=str(poseName),
-                )
+                # poseName = cmds.getAttr (self.mainWindow.currentPose+".poseName")
+                # listDeformationsFrame = cmds.blurSculpt (self.mainWindow.currentBlurNode,query = True,listFrames = True, poseName=str(poseName) )
+                listDeformationsFrame = self.mainWindow.getListDeformationFrames()
 
                 if self.theTime in listDeformationsFrame:
                     self.mainWindow.refresh()
