@@ -1100,10 +1100,12 @@ class BlurDeformDialog(Dialog):
             print(blurNode, frame, poseName)
 
             if poseName not in poseNames:
-                (prt,) = cmds.listRelatives(geom, parent=True, path=True)
+                prt = cmds.listRelatives(geom, parent=True, path=True)
                 local = True
                 poseTransform = ""
-                if cmds.attributeQuery("deformationType", node=prt, ex=True):
+                if prt:
+                    prt = prt[0]
+                if prt and cmds.attributeQuery("deformationType", node=prt, ex=True):
                     local = cmds.getAttr(prt + ".deformationType") == 0
 
                 self.addNewPose(
@@ -1120,21 +1122,26 @@ class BlurDeformDialog(Dialog):
                     cmds.getAttr("{blurNode}.poses[{i}].poseName".format(i=i, **dicVal))
                     for i in posesIndices
                 ]
+                dicVal["indPose"] = posesIndices[poseNames.index(poseName)]
 
-                if cmds.attributeQuery("poseMatrix", node=prt, ex=True):
-                    dicVal["indPose"] = posesIndices[-1]
+                if prt and cmds.attributeQuery("poseMatrix", node=prt, ex=True):
                     poseMatrixConn = cmds.getAttr(prt + ".poseMatrix")
                     if cmds.objExists(poseMatrixConn):
-                        cmds.connectAttr(
-                            poseMatrixConn,
-                            "{blurNode}.poses[{indPose}].poseMatrix".format(**dicVal),
-                            f=True,
-                        )
+                        try:
+                            cmds.connectAttr(
+                                poseMatrixConn,
+                                "{blurNode}.poses[{indPose}].poseMatrix".format(
+                                    **dicVal
+                                ),
+                                f=True,
+                            )
+                        except:
+                            pass
 
             cmds.currentTime(frame)
             cmds.blurSculpt(self.currentGeom, addAtTime=geom, poseName=poseName)
 
-        cmds.evalDeferred(cmds.refresh)
+        cmds.evalDeferred(self.refresh)
 
     def doKeepShapes(self):
         self.keepShapes = self.popup_option.actions()[0].isChecked()
