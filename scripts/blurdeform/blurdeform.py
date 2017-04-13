@@ -217,7 +217,7 @@ class BlurDeformDialog(Dialog):
                 return
         else:
             meshToAddAsFrame = selection[0]
-            if self.doKeepShapes:
+            if self.keepShapes:
                 self.resForDuplicate = meshToAddAsFrame  # keep for later renaming
 
         if meshToAddAsFrame == self.currentGeom:
@@ -1137,7 +1137,7 @@ class BlurDeformDialog(Dialog):
         cmds.evalDeferred(cmds.refresh)
 
     def doKeepShapes(self):
-        self.keepShapes = self.popup_option.actions()[-1].isChecked()
+        self.keepShapes = self.popup_option.actions()[0].isChecked()
         intVal = 1 if self.keepShapes else 0
         cmds.optionVar(intValue=("blurScluptKeep", intVal))
 
