@@ -823,7 +823,7 @@ class BlurDeformDialog(Dialog):
         else:
             doRename = True
 
-        if doRename:
+        if doRename and cmds.objExists(self.resForDuplicate):
             poseName = cmds.getAttr(self.currentPose + ".poseName")
             newName = "{0}_{1}_f{2}_".format(
                 self.currentBlurNode, poseName, int(cmds.currentTime(q=True))
