@@ -16,8 +16,12 @@ from blurdev.gui import Dialog
 from studio.gui.resource import Icons
 from PyQt4 import QtGui, QtCore
 import blurdev.debug
+
 from . import extraWidgets, blurAddPose
 from functools import partial
+from xml.dom import minidom
+import xml.etree.ElementTree as ET
+import codecs, os
 
 _icons = {
     "disconnect": Icons.getIcon("plug--minus"),
@@ -520,6 +524,8 @@ class BlurDeformDialog(Dialog):
 
     def refreshListFrames(self):
         poseName = str(cmds.getAttr(self.currentPose + ".poseName"))
+        # self.changeTheFrame[int].itemChanged
+
         QtCore.QObject.disconnect(
             self.uiFramesTW,
             QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
@@ -837,6 +843,8 @@ class BlurDeformDialog(Dialog):
 
     def refresh(self, selectTime=False, selTime=0.0):
         # cmds.warning ("REFRESH CALLED")
+        # self.uiBlurNodesTW.blockSignals (True) ;
+
         QtCore.QObject.disconnect(
             self.uiBlurNodesTW,
             QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
@@ -930,6 +938,8 @@ class BlurDeformDialog(Dialog):
         self.popup_option.addAction(
             _icons["restore"], "restore from backUp", self.restoreBackUp
         )
+        self.popup_option.addAction("store xml file", self.storeXmlFileOfPoses)
+        self.popup_option.addAction("retrieve xml file", self.retrieveXml)
 
         if cmds.optionVar(exists="blurScluptKeep"):
             setChecked = cmds.optionVar(q="blurScluptKeep") == 1
@@ -942,6 +952,319 @@ class BlurDeformDialog(Dialog):
 
     def popMenuMousePressEvent(self, event):
         self.popup_option.exec_(event.globalPos())
+
+    def storeXmlFileOfPoses(self):
+        sceneName = cmds.file(q=True, sceneName=True)
+        splt = sceneName.split("/")
+        startDir = "/".join(splt[:-1])
+        res = cmds.fileDialog2(
+            fileMode=0, dialogStyle=1, caption="save data", startingDirectory=startDir
+        )
+        if res:
+            destinationFile = res.pop()
+            if not destinationFile.endswith(".xml"):
+                destinationFile = destinationFile.split(".")[0] + ".xml"
+
+        else:
+            return
+
+        print('destinationFile = "{0}"'.format(destinationFile))
+        with extraWidgets.WaitCursorCtxt():
+            doc = minidom.Document()
+            ALL_tag = doc.createElement("ALL")
+            doc.appendChild(ALL_tag)
+            blurNodes = cmds.ls(type="blurSculpt")
+            # for blurNode in blurNodes :
+            # 	created_tag = self.storeInfoBlurSculpt(doc, blurNode )
+            # 	ALL_tag .appendChild (created_tag )
+
+            created_tag = self.storeInfoBlurSculpt(doc, self.currentBlurNode)
+            ALL_tag.appendChild(created_tag)
+
+            with codecs.open(destinationFile, "w", "utf-8") as out:
+                doc.writexml(out, indent="\n", addindent="\t", newl="")
+
+    def retrieveXml(self):
+        sceneName = cmds.file(q=True, sceneName=True)
+        splt = sceneName.split("/")
+        startDir = "/".join(splt[:-1])
+        res = cmds.fileDialog2(
+            fileMode=1,
+            dialogStyle=1,
+            caption="retrieve data",
+            startingDirectory=startDir,
+        )
+
+        if res:
+            with extraWidgets.WaitCursorCtxt():
+                sourceFile = res.pop()
+                if os.path.isfile(sourceFile):
+                    tree = ET.parse(sourceFile)
+                    root = tree.getroot()
+                    self.retrieveblurXml(root)
+
+    def retrieveblurXml(self, root):
+        dicVal = {"blurNode": self.currentBlurNode}
+
+        pses = cmds.getAttr(self.currentBlurNode + ".poses", mi=True)
+        dicPoses = {}
+        newInd = 0
+        if pses:
+            posesIndices = map(int, pses)
+            for logicalInd in posesIndices:
+                dicVal["indPose"] = logicalInd
+                thePose = cmds.getAttr(
+                    "{blurNode}.poses[{indPose}].poseName".format(**dicVal)
+                )
+                dicPoses[dicPoses] = dicPoses
+            newInd = max(posesIndices) + 1
+
+        for blurNode_tag in root.getchildren():
+            blurName = blurNode_tag.get("name")
+            print(blurName)
+            for pose_tag in blurNode_tag.getchildren():
+                poseName = pose_tag.get("poseName")
+                print(poseName)
+
+                # access the pose Index
+                if poseName not in dicPoses:  # create it
+                    dicVal["indPose"] = newInd
+                    cmds.setAttr(
+                        "{blurNode}.poses[{indPose}].poseName".format(**dicVal),
+                        poseName,
+                        type="string",
+                    )
+                    dicPoses[poseName] = newInd
+                    newInd += 1
+                    # do the connection and type
+                    poseEnabled = pose_tag.get("poseEnabled") == "True"
+                    poseGain = float(pose_tag.get("poseGain"))
+                    poseOffset = float(pose_tag.get("poseOffset"))
+                    cmds.setAttr(
+                        "{blurNode}.poses[{indPose}].poseEnabled".format(**dicVal),
+                        poseEnabled,
+                    )
+                    cmds.setAttr(
+                        "{blurNode}.poses[{indPose}].poseGain".format(**dicVal),
+                        poseGain,
+                    )
+                    cmds.setAttr(
+                        "{blurNode}.poses[{indPose}].poseOffset".format(**dicVal),
+                        poseOffset,
+                    )
+
+                    deformType = int(pose_tag.get("deformType"))
+                    cmds.setAttr(
+                        "{blurNode}.poses[{indPose}].deformationType".format(**dicVal),
+                        deformType,
+                    )
+                    poseMatrixConn = pose_tag.get("poseMatrix")
+                    if cmds.objExists(poseMatrixConn):
+                        try:
+                            cmds.connectAttr(
+                                poseMatrixConn,
+                                "{blurNode}.poses[{indPose}].poseMatrix".format(
+                                    **dicVal
+                                ),
+                                f=True,
+                            )
+                        except:
+                            pass
+                else:
+                    dicVal["indPose"] = dicPoses[poseName]
+                #
+                dicFrames = {}
+                newFrameInd = 0
+                listDeformationsIndices = cmds.getAttr(
+                    "{blurNode}.poses[{indPose}].deformations".format(**dicVal), mi=True
+                )
+                if listDeformationsIndices:
+                    for logicalFrameIndex in listDeformationsIndices:
+                        frame = cmds.getAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].frame".format(
+                                **dicVal
+                            )
+                        )
+                        dicFrames[frame] = logicalFrameIndex
+                    newFrameInd = max(listDeformationsIndices) + 1
+
+                for frame_tag in pose_tag.getchildren():
+                    frame = float(frame_tag.get("frame"))
+                    if frame not in dicFrames:
+                        dicVal["frameInd"] = newFrameInd
+                        newFrameInd += 1
+
+                        gain = float(frame_tag.get("gain"))
+                        offset = float(frame_tag.get("offset"))
+                        frameEnabled = frame_tag.get("frameEnabled") == "True"
+                        cmds.setAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].gain".format(
+                                **dicVal
+                            ),
+                            gain,
+                        )
+                        cmds.setAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].offset".format(
+                                **dicVal
+                            ),
+                            offset,
+                        )
+                        cmds.setAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].frameEnabled".format(
+                                **dicVal
+                            ),
+                            frameEnabled,
+                        )
+                        cmds.setAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].frame".format(
+                                **dicVal
+                            ),
+                            frame,
+                        )
+                    else:
+                        dicVal["frameInd"] = dicFrames[frame]
+                        # first clear
+                        frameName = "{blurNode}.poses[{indPose}].deformations[{frameInd}]".format(
+                            **dicVal
+                        )
+                        mvtIndices = cmds.getAttr(
+                            frameName + ".vectorMovements", mi=True
+                        )
+                        if mvtIndices:
+                            mvtIndices = map(int, mvtIndices)
+                            for indVtx in mvtIndices:
+                                cmds.removeMultiInstance(
+                                    frameName + ".vectorMovements[{0}]".format(indVtx),
+                                    b=True,
+                                )
+
+                    vector_tag = frame_tag.getchildren()[0]
+                    for vectag in vector_tag.getchildren():
+                        index = int(vectag.get("index"))
+                        dicVal["vecInd"] = index
+                        value = vectag.get("value")
+                        floatVal = map(float, value[1:-1].split(", "))
+                        cmds.setAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements[{vecInd}]".format(
+                                **dicVal
+                            ),
+                            *floatVal
+                        )
+
+    def storeInfoBlurSculpt(self, doc, blurNode):
+        blurNode_tag = doc.createElement("blurSculpt")
+        blurNode_tag.setAttribute("name", blurNode)
+        geom = self.getGeom(blurNode, transform=True)
+        blurNode_tag.setAttribute("geom", geom)
+
+        listPoses = cmds.blurSculpt(blurNode, query=True, listPoses=True)
+        if not listPoses:
+            return blurNode_tag
+        dicVal = {"blurNode": blurNode}
+
+        posesIndices = map(int, cmds.getAttr(blurNode + ".poses", mi=True))
+
+        # first store positions
+        for logicalInd in posesIndices:
+            dicVal["indPose"] = logicalInd
+
+            thePose = cmds.getAttr(
+                "{blurNode}.poses[{indPose}].poseName".format(**dicVal)
+            )
+            poseAttr = "{blurNode}.poses[{indPose}].poseEnabled".format(**dicVal)
+            poseGain = "{blurNode}.poses[{indPose}].poseGain".format(**dicVal)
+            poseOffset = "{blurNode}.poses[{indPose}].poseOffset".format(**dicVal)
+            isEnabled = cmds.getAttr(poseAttr)
+            poseGainVal = cmds.getAttr(poseGain)
+            poseOffsetVal = cmds.getAttr(poseOffset)
+
+            pose_tag = doc.createElement("pose")
+            pose_tag.setAttribute("poseEnabled", str(isEnabled))
+            pose_tag.setAttribute("poseGain", str(poseGainVal))
+            pose_tag.setAttribute("poseOffset", str(poseOffsetVal))
+            pose_tag.setAttribute("poseName", str(thePose))
+
+            blurNode_tag.appendChild(pose_tag)
+
+            deformType = cmds.getAttr(
+                "{blurNode}.poses[{indPose}].deformationType".format(**dicVal)
+            )
+            pose_tag.setAttribute("deformType", str(deformType))
+
+            inConnections = cmds.listConnections(
+                "{blurNode}.poses[{indPose}].poseMatrix".format(**dicVal),
+                s=True,
+                d=False,
+                p=True,
+            )
+            if not inConnections:
+                val = "N/A"
+            else:
+                val = inConnections[0]
+            pose_tag.setAttribute("poseMatrix", str(val))
+
+            listDeformationsIndices = cmds.getAttr(
+                "{blurNode}.poses[{indPose}].deformations".format(**dicVal), mi=True
+            )
+            if not listDeformationsIndices:
+                continue
+
+            for logicalFrameIndex in listDeformationsIndices:
+                dicVal["frameInd"] = logicalFrameIndex
+                frame = cmds.getAttr(
+                    "{blurNode}.poses[{indPose}].deformations[{frameInd}].frame".format(
+                        **dicVal
+                    )
+                )
+
+                # store vals --------------------------------------------------------------------------------------------
+                gain = (
+                    "{blurNode}.poses[{indPose}].deformations[{frameInd}].gain".format(
+                        **dicVal
+                    )
+                )
+                offset = "{blurNode}.poses[{indPose}].deformations[{frameInd}].offset".format(
+                    **dicVal
+                )
+                gainVal = cmds.getAttr(gain)
+                offsetVal = cmds.getAttr(offset)
+
+                frameEnabled = "{blurNode}.poses[{indPose}].deformations[{frameInd}].frameEnabled".format(
+                    **dicVal
+                )
+                frameEnabledVal = cmds.getAttr(frameEnabled)
+
+                frame_tag = doc.createElement("frame")
+                frame_tag.setAttribute("frame", str(frame))
+                frame_tag.setAttribute("gain", str(gainVal))
+                frame_tag.setAttribute("offset", str(offsetVal))
+                frame_tag.setAttribute("frameEnabled", str(frameEnabledVal))
+
+                pose_tag.appendChild(frame_tag)
+
+                mvtIndices = cmds.getAttr(
+                    "{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements".format(
+                        **dicVal
+                    ),
+                    mi=True,
+                )
+                vector_tag = doc.createElement("vectorMovements")
+                frame_tag.appendChild(vector_tag)
+                if mvtIndices:
+                    mvtIndices = map(int, mvtIndices)
+                    for vecInd in mvtIndices:
+                        dicVal["vecInd"] = vecInd
+                        (mvt,) = cmds.getAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements[{vecInd}]".format(
+                                **dicVal
+                            )
+                        )
+                        vectag = doc.createElement("vectorMovements")
+                        vectag.setAttribute("index", str(vecInd))
+                        vectag.setAttribute("value", str(mvt))
+                        vector_tag.appendChild(vectag)
+
+        return blurNode_tag
 
     def backUp(self):
         blurGrp = cmds.createNode("transform", n="{0}_".format(self.currentBlurNode))
