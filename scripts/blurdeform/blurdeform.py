@@ -46,6 +46,19 @@ from maya import cmds, mel
 import sip
 
 
+class toggleBlockSignals(object):
+    def __init__(self, listWidgets, raise_error=True):
+        self.listWidgets = listWidgets
+
+    def __enter__(self):
+        for widg in listWidgets:
+            widg.blockSignals(True)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for widg in listWidgets:
+            widg.blockSignals(False)
+
+
 def orderMelList(listInd, onlyStr=True):
     # listInd = [49, 60, 61, 62, 80, 81, 82, 83, 100, 101, 102, 103, 113, 119, 120, 121, 138, 139, 140, 158, 159, 178, 179, 198, 230, 231, 250, 251, 252, 270, 271, 272, 273, 274, 291, 292, 293, 319, 320, 321, 360,361,362]
     listIndString = []
@@ -159,6 +172,25 @@ class BlurDeformDialog(Dialog):
             self.refreshListPoses(selectLast=True)
         # self.selectPose (poseName)
 
+    def doDuplicate(self):
+        frameIndex = float(self.clickedItem.text(0))
+        result = cmds.promptDialog(
+            title="Duplicate Frame",
+            message="Enter new Frame:",
+            button=["OK", "Cancel"],
+            defaultButton="OK",
+            cancelButton="Cancel",
+            dismissString="Cancel",
+        )
+
+        if result == "OK":
+            text = cmds.promptDialog(query=True, text=True)
+            try:
+                newTime = float(text)
+            except:
+                return
+            self.duplicateFrame(frameIndex, newTime)
+
     def duplicateFrame(self, prevTime, currTime):
         with extraWidgets.WaitCursorCtxt():
             poseName = cmds.getAttr(self.currentPose + ".poseName")
@@ -208,7 +240,9 @@ class BlurDeformDialog(Dialog):
                         *val
                     )
 
-        self.refresh(selectTime=True, selTime=currTime)
+        QtCore.QTimer.singleShot(
+            0, partial(self.refresh, selectTime=True, selTime=currTime)
+        )
 
     def addNewFrame(self):
         cmds.selectMode(object=True)
@@ -923,6 +957,7 @@ class BlurDeformDialog(Dialog):
     def create_popup_menu(self, parent=None):
         self.popup_menu = QtGui.QMenu(parent)
         self.popup_menu.addAction(_icons["toFrame"], "jumpToFrame", self.jumpToFrame)
+        self.popup_menu.addAction("duplicate frame", self.doDuplicate)
         self.popup_menu.addAction("select influenced vertices", self.selectVertices)
         self.popup_menu.addAction(
             "remove selected vertices (NO UNDO)", self.removeSelectedVerticesFromFrame
