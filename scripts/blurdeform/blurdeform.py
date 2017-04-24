@@ -46,19 +46,6 @@ from maya import cmds, mel
 import sip
 
 
-class toggleBlockSignals(object):
-    def __init__(self, listWidgets, raise_error=True):
-        self.listWidgets = listWidgets
-
-    def __enter__(self):
-        for widg in listWidgets:
-            widg.blockSignals(True)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        for widg in listWidgets:
-            widg.blockSignals(False)
-
-
 def orderMelList(listInd, onlyStr=True):
     # listInd = [49, 60, 61, 62, 80, 81, 82, 83, 100, 101, 102, 103, 113, 119, 120, 121, 138, 139, 140, 158, 159, 178, 179, 198, 230, 231, 250, 251, 252, 270, 271, 272, 273, 274, 291, 292, 293, 319, 320, 321, 360,361,362]
     listIndString = []
@@ -348,22 +335,27 @@ class BlurDeformDialog(Dialog):
         self.refresh(selectTime=True, selTime=currTime)
 
     def delete_frame(self):
-        currentFrameItem = self.uiFramesTW.currentItem()
-        if currentFrameItem:
-            toDelete = str(currentFrameItem.data(0, QtCore.Qt.UserRole).toString())
-            res = cmds.confirmDialog(
-                title="delete",
-                m="Do you want to delete the frame [{0}]?\nNo Undo".format(
-                    currentFrameItem.text(0)
-                ),
-                b=("Yes", "No"),
-                defaultButton="Yes",
-                cancelButton="No",
-                dismissString="No",
-            )
-            if res == "Yes":
+        framesToDelete = sorted(
+            [
+                float(currentFrameItem.text(0))
+                for currentFrameItem in self.uiFramesTW.selectedItems()
+            ]
+        )
+        framesToDelete = map(str, framesToDelete)
+
+        res = cmds.confirmDialog(
+            title="delete",
+            m="Do you want to delete the frames {0}?\nNo Undo".format(framesToDelete),
+            b=("Yes", "No"),
+            defaultButton="Yes",
+            cancelButton="No",
+            dismissString="No",
+        )
+        if res == "Yes":
+            for currentFrameItem in self.uiFramesTW.selectedItems():
+                toDelete = str(currentFrameItem.data(0, QtCore.Qt.UserRole).toString())
                 cmds.removeMultiInstance(toDelete, b=True)
-                self.refresh()
+            self.refresh()
 
     def delete_pose(self):
         if cmds.objExists(self.currentPose):
@@ -418,17 +410,8 @@ class BlurDeformDialog(Dialog):
             if self.isValidName(newName, oldName=prevName):
                 cmds.setAttr(blurPose + ".poseName", newName, type="string")
             else:
-                QtCore.QObject.disconnect(
-                    self.uiPosesTW,
-                    QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-                    self.renamePose,
-                )
-                item.setText(0, str(prevName))
-                QtCore.QObject.connect(
-                    self.uiPosesTW,
-                    QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-                    self.renamePose,
-                )
+                with extraWidgets.toggleBlockSignals([self.uiPosesTW]):
+                    item.setText(0, str(prevName))
 
         # check state
         isChecked = item.checkState(column) == QtCore.Qt.Checked
@@ -520,34 +503,34 @@ class BlurDeformDialog(Dialog):
             return
         frameChannel = str(item.data(0, QtCore.Qt.UserRole).toString())
         oldFrame = cmds.getAttr(frameChannel + ".frame")
+        changeOccured = False
         if floatFrame != oldFrame:
             if self.isValidFrame(floatFrame, oldFrame=oldFrame):
                 cmds.setAttr(frameChannel + ".frame", floatFrame)
+                changeOccured = True
             else:
-                QtCore.QObject.disconnect(
-                    self.uiFramesTW,
-                    QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-                    self.changeTheFrame,
-                )
-                item.setText(0, str(oldFrame))
-                QtCore.QObject.connect(
-                    self.uiFramesTW,
-                    QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-                    self.changeTheFrame,
-                )
+                with extraWidgets.toggleBlockSignals([self.uiFramesTW]):
+                    item.setText(0, str(oldFrame))
         # check state
-
         isChecked = item.checkState(0) == QtCore.Qt.Checked
         prevVal = cmds.getAttr(frameChannel + ".frameEnabled")
         # print "check",isChecked ,  prevVal
         if isChecked != prevVal:
             cmds.setAttr(frameChannel + ".frameEnabled", isChecked)
 
-    def selectFrame(self, item, prevItem):
-        # print "selectFrame"
-        indexFrame = self.uiFramesTW.indexOfTopLevelItem(item)
-        if self.addTimeLine:
-            self.blurTimeSlider.listKeys[indexFrame].select()
+        if changeOccured:
+            self.refreshListFramesAndSelect(floatFrame)
+
+    def selectFrameInTimeLine(self):
+        with extraWidgets.toggleBlockSignals([self.uiFramesTW]):
+            first = True
+            selectedItems = self.uiFramesTW.selectedItems()
+            for item in selectedItems:
+                indexFrame = self.uiFramesTW.indexOfTopLevelItem(item)
+                self.blurTimeSlider.listKeys[indexFrame].select(
+                    addSel=not first, selectInTree=False
+                )
+                first = False
 
     # ---------------------- display of ARRAY --------------------------------------
     def addKeyToTimePort(self, listDeformationsFrame):
@@ -560,219 +543,188 @@ class BlurDeformDialog(Dialog):
         poseName = str(cmds.getAttr(self.currentPose + ".poseName"))
         # self.changeTheFrame[int].itemChanged
 
-        QtCore.QObject.disconnect(
-            self.uiFramesTW,
-            QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-            self.changeTheFrame,
-        )
-        QtCore.QObject.disconnect(
-            self.uiFramesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.selectFrame,
-        )
+        with extraWidgets.toggleBlockSignals([self.uiFramesTW]):
 
-        self.uiFramesTW.clear()
-        self.uiFramesTW.setColumnCount(4)
-        self.uiFramesTW.setHeaderLabels(["frame", "\u00D8", "gain", "offset"])
+            self.uiFramesTW.clear()
+            self.uiFramesTW.setColumnCount(4)
+            self.uiFramesTW.setHeaderLabels(["frame", "\u00D8", "gain", "offset"])
 
-        # listDeformationsFrame = cmds.blurSculpt (self.currentBlurNode,query = True,listFrames = True, poseName=str(poseName) )
-        listDeformationsFrame = self.getListDeformationFrames()
-        listFramesViewPort = []
-        if listDeformationsFrame:
-            listDeformationsIndices = cmds.getAttr(
-                self.currentPose + ".deformations", mi=True
+            # listDeformationsFrame = cmds.blurSculpt (self.currentBlurNode,query = True,listFrames = True, poseName=str(poseName) )
+            listDeformationsFrame = self.getListDeformationFrames()
+            listFramesViewPort = []
+            if listDeformationsFrame:
+                listDeformationsIndices = cmds.getAttr(
+                    self.currentPose + ".deformations", mi=True
+                )
+                if not listDeformationsIndices:
+                    listDeformationsIndices = []
+
+                listDeformationsFrameandIndices = [
+                    (listDeformationsFrame[i], listDeformationsIndices[i])
+                    for i in range(len(listDeformationsFrame))
+                ]
+                listDeformationsFrameandIndices.sort()
+                for deformFrame, logicalFrameIndex in listDeformationsFrameandIndices:
+                    frameItem = QtGui.QTreeWidgetItem()
+                    frameItem.setText(0, str(deformFrame))
+                    frameItem.setFlags(
+                        frameItem.flags()
+                        | QtCore.Qt.ItemIsEditable
+                        | QtCore.Qt.ItemIsUserCheckable
+                    )
+
+                    checkState = cmds.getAttr(
+                        self.currentPose
+                        + ".deformations[{0}].frameEnabled".format(logicalFrameIndex)
+                    )
+                    if checkState:
+                        frameItem.setCheckState(0, QtCore.Qt.Checked)
+                    else:
+                        frameItem.setCheckState(0, QtCore.Qt.Unchecked)
+
+                    frameItem.setData(
+                        0,
+                        QtCore.Qt.UserRole,
+                        self.currentPose
+                        + ".deformations[{0}]".format(logicalFrameIndex),
+                    )
+                    frameItem.setText(2, "0.")
+                    frameItem.setText(3, "0.")
+
+                    vectorMovementsIndices = cmds.getAttr(
+                        self.currentPose
+                        + ".deformations[{0}].vectorMovements".format(
+                            logicalFrameIndex
+                        ),
+                        mi=True,
+                    )
+                    if not vectorMovementsIndices:
+                        frameItem.setBackground(0, QtGui.QBrush(self.blueCol))
+                        frameItem.setText(1, "\u00D8")
+                        frameItem.setTextAlignment(1, QtCore.Qt.AlignCenter)
+                        listFramesViewPort.append((deformFrame, True))
+                    else:
+                        listFramesViewPort.append((deformFrame, False))
+
+                    self.uiFramesTW.addTopLevelItem(frameItem)
+                    newWidgetGain = extraWidgets.spinnerWidget(
+                        self.currentPose
+                        + ".deformations[{0}].gain".format(logicalFrameIndex),
+                        singleStep=0.1,
+                        precision=2,
+                    )
+                    newWidgetGain.setMinimumHeight(20)
+                    newWidgetOffset = extraWidgets.spinnerWidget(
+                        self.currentPose
+                        + ".deformations[{0}].offset".format(logicalFrameIndex),
+                        singleStep=0.1,
+                        precision=2,
+                    )
+                    self.uiFramesTW.setItemWidget(frameItem, 2, newWidgetGain)
+                    self.uiFramesTW.setItemWidget(frameItem, 3, newWidgetOffset)
+
+            if self.addTimeLine:
+                self.addKeyToTimePort(listFramesViewPort)
+
+            vh = self.uiFramesTW.header()
+            vh.setStretchLastSection(False)
+            vh.setResizeMode(QtGui.QHeaderView.Stretch)
+            vh.setResizeMode(0, QtGui.QHeaderView.Stretch)
+            self.uiFramesTW.setColumnWidth(1, 20)
+            vh.setResizeMode(1, QtGui.QHeaderView.Fixed)
+            self.uiFramesTW.setColumnWidth(2, 50)
+            vh.setResizeMode(2, QtGui.QHeaderView.Fixed)
+            self.uiFramesTW.setColumnWidth(3, 50)
+            vh.setResizeMode(3, QtGui.QHeaderView.Fixed)
+            cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 1, 20))
+            cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 2, 50))
+            cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 3, 50))
+
+    #        vv.setResizeMode(QtGui.QHeaderView.Stretch)
+
+    def refreshListPoses(self, selectLast=False):
+        with extraWidgets.toggleBlockSignals([self.uiPosesTW]):
+
+            self.currentPose = ""
+            self.uiPosesTW.clear()
+            self.uiFramesTW.clear()
+
+            self.uiPosesTW.setColumnCount(3)
+            self.uiPosesTW.setHeaderLabels(["pose", "gain", "offset"])
+
+            listPoses = cmds.blurSculpt(
+                self.currentBlurNode, query=True, listPoses=True
             )
-            if not listDeformationsIndices:
-                listDeformationsIndices = []
+            if not listPoses:
+                return
+            # print "list Poses is " + listPoses
+            dicVal = {"blurNode": self.currentBlurNode}
 
-            listDeformationsFrameandIndices = [
-                (listDeformationsFrame[i], listDeformationsIndices[i])
-                for i in range(len(listDeformationsFrame))
-            ]
-            listDeformationsFrameandIndices.sort()
-            for deformFrame, logicalFrameIndex in listDeformationsFrameandIndices:
-                frameItem = QtGui.QTreeWidgetItem()
-                frameItem.setText(0, str(deformFrame))
-                frameItem.setFlags(
-                    frameItem.flags()
-                    | QtCore.Qt.ItemIsEditable
-                    | QtCore.Qt.ItemIsUserCheckable
+            posesIndices = map(
+                int, cmds.getAttr(self.currentBlurNode + ".poses", mi=True)
+            )
+            # for indNm, thePose in enumerate(listPoses) :
+            # 	logicalInd =posesIndices [indNm]
+            for logicalInd in posesIndices:
+                dicVal["indPose"] = logicalInd
+                thePose = cmds.getAttr(
+                    "{blurNode}.poses[{indPose}].poseName".format(**dicVal)
                 )
 
+                channelItem = QtGui.QTreeWidgetItem()
+                channelItem.setText(0, thePose)
+                channelItem.setText(1, "0.")
+                channelItem.setText(2, "0.")
+
+                channelItem.setFlags(
+                    channelItem.flags()
+                    | QtCore.Qt.ItemIsUserCheckable
+                    | QtCore.Qt.ItemIsSelectable
+                    | QtCore.Qt.ItemIsEditable
+                )
+
+                # store the logical index
+                dicVal["indPose"] = logicalInd
                 checkState = cmds.getAttr(
-                    self.currentPose
-                    + ".deformations[{0}].frameEnabled".format(logicalFrameIndex)
+                    "{blurNode}.poses[{indPose}].poseEnabled".format(**dicVal)
                 )
                 if checkState:
-                    frameItem.setCheckState(0, QtCore.Qt.Checked)
+                    channelItem.setCheckState(0, QtCore.Qt.Checked)
                 else:
-                    frameItem.setCheckState(0, QtCore.Qt.Unchecked)
+                    channelItem.setCheckState(0, QtCore.Qt.Unchecked)
 
-                frameItem.setData(
+                self.uiPosesTW.addTopLevelItem(channelItem)
+                # store for delation
+                channelItem.setData(
                     0,
                     QtCore.Qt.UserRole,
-                    self.currentPose + ".deformations[{0}]".format(logicalFrameIndex),
+                    "{blurNode}.poses[{indPose}]".format(**dicVal),
                 )
-                frameItem.setText(2, "0.")
-                frameItem.setText(3, "0.")
 
-                vectorMovementsIndices = cmds.getAttr(
-                    self.currentPose
-                    + ".deformations[{0}].vectorMovements".format(logicalFrameIndex),
-                    mi=True,
-                )
-                if not vectorMovementsIndices:
-                    frameItem.setBackground(0, QtGui.QBrush(self.blueCol))
-                    frameItem.setText(1, "\u00D8")
-                    frameItem.setTextAlignment(1, QtCore.Qt.AlignCenter)
-                    listFramesViewPort.append((deformFrame, True))
-                else:
-                    listFramesViewPort.append((deformFrame, False))
-
-                self.uiFramesTW.addTopLevelItem(frameItem)
                 newWidgetGain = extraWidgets.spinnerWidget(
-                    self.currentPose
-                    + ".deformations[{0}].gain".format(logicalFrameIndex),
+                    "{blurNode}.poses[{indPose}].poseGain".format(**dicVal),
                     singleStep=0.1,
                     precision=2,
                 )
                 newWidgetGain.setMinimumHeight(20)
                 newWidgetOffset = extraWidgets.spinnerWidget(
-                    self.currentPose
-                    + ".deformations[{0}].offset".format(logicalFrameIndex),
+                    "{blurNode}.poses[{indPose}].poseOffset".format(**dicVal),
                     singleStep=0.1,
                     precision=2,
                 )
-                self.uiFramesTW.setItemWidget(frameItem, 2, newWidgetGain)
-                self.uiFramesTW.setItemWidget(frameItem, 3, newWidgetOffset)
+                self.uiPosesTW.setItemWidget(channelItem, 1, newWidgetGain)
+                self.uiPosesTW.setItemWidget(channelItem, 2, newWidgetOffset)
 
-        if self.addTimeLine:
-            self.addKeyToTimePort(listFramesViewPort)
-
-        vh = self.uiFramesTW.header()
-        vh.setStretchLastSection(False)
-        vh.setResizeMode(QtGui.QHeaderView.Stretch)
-        vh.setResizeMode(0, QtGui.QHeaderView.Stretch)
-        self.uiFramesTW.setColumnWidth(1, 20)
-        vh.setResizeMode(1, QtGui.QHeaderView.Fixed)
-        self.uiFramesTW.setColumnWidth(2, 50)
-        vh.setResizeMode(2, QtGui.QHeaderView.Fixed)
-        self.uiFramesTW.setColumnWidth(3, 50)
-        vh.setResizeMode(3, QtGui.QHeaderView.Fixed)
-        cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 1, 20))
-        cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 2, 50))
-        cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 3, 50))
-
-        QtCore.QObject.connect(
-            self.uiFramesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.selectFrame,
-        )
-        QtCore.QObject.connect(
-            self.uiFramesTW,
-            QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-            self.changeTheFrame,
-        )
-
-    #        vv.setResizeMode(QtGui.QHeaderView.Stretch)
-
-    def refreshListPoses(self, selectLast=False):
-        QtCore.QObject.disconnect(
-            self.uiPosesTW,
-            QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-            self.renamePose,
-        )
-        QtCore.QObject.disconnect(
-            self.uiPosesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.refreshPoseInfo,
-        )
-
-        self.currentPose = ""
-        self.uiPosesTW.clear()
-        self.uiFramesTW.clear()
-
-        self.uiPosesTW.setColumnCount(3)
-        self.uiPosesTW.setHeaderLabels(["pose", "gain", "offset"])
-
-        listPoses = cmds.blurSculpt(self.currentBlurNode, query=True, listPoses=True)
-        if not listPoses:
-            return
-        # print "list Poses is " + listPoses
-        dicVal = {"blurNode": self.currentBlurNode}
-
-        posesIndices = map(int, cmds.getAttr(self.currentBlurNode + ".poses", mi=True))
-        # for indNm, thePose in enumerate(listPoses) :
-        # 	logicalInd =posesIndices [indNm]
-        for logicalInd in posesIndices:
-            dicVal["indPose"] = logicalInd
-            thePose = cmds.getAttr(
-                "{blurNode}.poses[{indPose}].poseName".format(**dicVal)
-            )
-
-            channelItem = QtGui.QTreeWidgetItem()
-            channelItem.setText(0, thePose)
-            channelItem.setText(1, "0.")
-            channelItem.setText(2, "0.")
-
-            channelItem.setFlags(
-                channelItem.flags()
-                | QtCore.Qt.ItemIsUserCheckable
-                | QtCore.Qt.ItemIsSelectable
-                | QtCore.Qt.ItemIsEditable
-            )
-
-            # store the logical index
-            dicVal["indPose"] = logicalInd
-            checkState = cmds.getAttr(
-                "{blurNode}.poses[{indPose}].poseEnabled".format(**dicVal)
-            )
-            if checkState:
-                channelItem.setCheckState(0, QtCore.Qt.Checked)
-            else:
-                channelItem.setCheckState(0, QtCore.Qt.Unchecked)
-
-            self.uiPosesTW.addTopLevelItem(channelItem)
-            # store for delation
-            channelItem.setData(
-                0, QtCore.Qt.UserRole, "{blurNode}.poses[{indPose}]".format(**dicVal)
-            )
-
-            newWidgetGain = extraWidgets.spinnerWidget(
-                "{blurNode}.poses[{indPose}].poseGain".format(**dicVal),
-                singleStep=0.1,
-                precision=2,
-            )
-            newWidgetGain.setMinimumHeight(20)
-            newWidgetOffset = extraWidgets.spinnerWidget(
-                "{blurNode}.poses[{indPose}].poseOffset".format(**dicVal),
-                singleStep=0.1,
-                precision=2,
-            )
-            self.uiPosesTW.setItemWidget(channelItem, 1, newWidgetGain)
-            self.uiPosesTW.setItemWidget(channelItem, 2, newWidgetOffset)
-
-        vh = self.uiPosesTW.header()
-        vh.setStretchLastSection(False)
-        vh.setResizeMode(QtGui.QHeaderView.Stretch)
-        vh.setResizeMode(0, QtGui.QHeaderView.Stretch)
-        self.uiPosesTW.setColumnWidth(1, 50)
-        vh.setResizeMode(1, QtGui.QHeaderView.Fixed)
-        self.uiPosesTW.setColumnWidth(2, 50)
-        vh.setResizeMode(2, QtGui.QHeaderView.Fixed)
-        cmds.evalDeferred(partial(self.uiPosesTW.setColumnWidth, 1, 50))
-        cmds.evalDeferred(partial(self.uiPosesTW.setColumnWidth, 2, 50))
-
-        QtCore.QObject.connect(
-            self.uiPosesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.refreshPoseInfo,
-        )
-        QtCore.QObject.connect(
-            self.uiPosesTW,
-            QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-            self.renamePose,
-        )
+            vh = self.uiPosesTW.header()
+            vh.setStretchLastSection(False)
+            vh.setResizeMode(QtGui.QHeaderView.Stretch)
+            vh.setResizeMode(0, QtGui.QHeaderView.Stretch)
+            self.uiPosesTW.setColumnWidth(1, 50)
+            vh.setResizeMode(1, QtGui.QHeaderView.Fixed)
+            self.uiPosesTW.setColumnWidth(2, 50)
+            vh.setResizeMode(2, QtGui.QHeaderView.Fixed)
+            cmds.evalDeferred(partial(self.uiPosesTW.setColumnWidth, 1, 50))
+            cmds.evalDeferred(partial(self.uiPosesTW.setColumnWidth, 2, 50))
 
         if len(listPoses) > 0:
             if selectLast:
@@ -787,30 +739,20 @@ class BlurDeformDialog(Dialog):
         self.refreshListPoses()
 
     def fillTreeOfBlurNodes(self):
-        QtCore.QObject.disconnect(
-            self.uiBlurNodesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.changedSelection,
-        )
+        with extraWidgets.toggleBlockSignals([self.uiBlurNodesTW]):
+            self.uiBlurNodesTW.clear()
+            self.uiBlurNodesTW.setColumnCount(2)
+            self.uiBlurNodesTW.setHeaderLabels(["blurSculpt", "mesh"])
+            self.uiBlurNodesTW.setExpandsOnDoubleClick(False)
 
-        self.uiBlurNodesTW.clear()
-        self.uiBlurNodesTW.setColumnCount(2)
-        self.uiBlurNodesTW.setHeaderLabels(["blurSculpt", "mesh"])
-        self.uiBlurNodesTW.setExpandsOnDoubleClick(False)
+            blurNodes = cmds.ls(type="blurSculpt")
+            for blrNode in blurNodes:
+                geom = self.getGeom(blrNode, transform=True)
+                channelItem = QtGui.QTreeWidgetItem()
+                channelItem.setText(0, blrNode)
+                channelItem.setText(1, geom)
+                self.uiBlurNodesTW.addTopLevelItem(channelItem)
 
-        blurNodes = cmds.ls(type="blurSculpt")
-        for blrNode in blurNodes:
-            geom = self.getGeom(blrNode, transform=True)
-            channelItem = QtGui.QTreeWidgetItem()
-            channelItem.setText(0, blrNode)
-            channelItem.setText(1, geom)
-            self.uiBlurNodesTW.addTopLevelItem(channelItem)
-
-        QtCore.QObject.connect(
-            self.uiBlurNodesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.changedSelection,
-        )
         for i in range(2):
             self.uiBlurNodesTW.resizeColumnToContents(i)
 
@@ -878,71 +820,47 @@ class BlurDeformDialog(Dialog):
     def refresh(self, selectTime=False, selTime=0.0):
         # cmds.warning ("REFRESH CALLED")
         # self.uiBlurNodesTW.blockSignals (True) ;
+        with extraWidgets.toggleBlockSignals(
+            [self.uiBlurNodesTW, self.uiPosesTW, self.uiFramesTW]
+        ):
+            self.uiPosesTW.clear()
+            self.uiFramesTW.clear()
 
-        QtCore.QObject.disconnect(
-            self.uiBlurNodesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.changedSelection,
-        )
-        QtCore.QObject.disconnect(
-            self.uiPosesTW,
-            QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-            self.renamePose,
-        )
-        QtCore.QObject.disconnect(
-            self.uiFramesTW,
-            QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-            self.changeTheFrame,
-        )
-        QtCore.QObject.disconnect(
-            self.uiFramesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.selectFrame,
-        )
-        QtCore.QObject.disconnect(
-            self.uiPosesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.refreshPoseInfo,
-        )
+            # self.currentBlurNode = ""
+            # self.currentGeom = ""
+            currentPose = self.currentPose
 
-        self.uiPosesTW.clear()
-        self.uiFramesTW.clear()
+            self.uiPosesTW.setColumnCount(3)
+            self.uiPosesTW.setHeaderLabels(["pose", "gain", "offset"])
+            self.uiFramesTW.setColumnCount(4)
+            self.uiFramesTW.setHeaderLabels(["frame", "\u00D8", "gain", "offset"])
 
-        # self.currentBlurNode = ""
-        # self.currentGeom = ""
-        currentPose = self.currentPose
+            self.fillTreeOfBlurNodes()
 
-        self.uiPosesTW.setColumnCount(3)
-        self.uiPosesTW.setHeaderLabels(["pose", "gain", "offset"])
-        self.uiFramesTW.setColumnCount(4)
-        self.uiFramesTW.setHeaderLabels(["frame", "\u00D8", "gain", "offset"])
+            blurNodes = cmds.ls(type="blurSculpt")
 
-        self.fillTreeOfBlurNodes()
+            if self.currentBlurNode in blurNodes:
+                ind = blurNodes.index(self.currentBlurNode)
+                item = self.uiBlurNodesTW.topLevelItem(ind)
+                self.uiBlurNodesTW.setCurrentItem(item)
 
-        blurNodes = cmds.ls(type="blurSculpt")
+                foundPose = False
+                for i in range(self.uiPosesTW.topLevelItemCount()):
+                    itemPose = self.uiPosesTW.topLevelItem(i)
+                    thePose = str(itemPose.data(0, QtCore.Qt.UserRole).toString())
+                    if thePose == currentPose:
+                        foundPose = True
+                        self.uiPosesTW.setCurrentItem(itemPose)
+                        break
+                # print "foundPose " + str(foundPose )
+                if not foundPose and currentPose != "":
+                    self.currentPose = ""
+                    self.uiPosesTW.selectionModel().clearSelection()
 
-        if self.currentBlurNode in blurNodes:
-            ind = blurNodes.index(self.currentBlurNode)
-            item = self.uiBlurNodesTW.topLevelItem(ind)
-            self.uiBlurNodesTW.setCurrentItem(item)
-
-            foundPose = False
-            for i in range(self.uiPosesTW.topLevelItemCount()):
-                itemPose = self.uiPosesTW.topLevelItem(i)
-                thePose = str(itemPose.data(0, QtCore.Qt.UserRole).toString())
-                if thePose == currentPose:
-                    foundPose = True
-                    self.uiPosesTW.setCurrentItem(itemPose)
-                    break
-            # print "foundPose " + str(foundPose )
-            if not foundPose and currentPose != "":
+            else:
+                self.currentBlurNode = ""
+                self.currentGeom = ""
                 self.currentPose = ""
-                self.uiPosesTW.selectionModel().clearSelection()
-
-        else:
-            self.currentBlurNode = ""
-            self.currentGeom = ""
-            self.currentPose = ""
 
         if selectTime:
             self.selectFrameTime(selTime)
@@ -1509,6 +1427,9 @@ class BlurDeformDialog(Dialog):
     def on_context_menu(self, event):
         pos = event.pos()
         self.clickedItem = self.uiFramesTW.itemAt(pos)
+        self.popup_menu.multiSelection = len(self.uiFramesTW.selectedItems()) > 1
+        for i in range(0, 4):
+            self.popup_menu.actions()[i].setVisible(not self.popup_menu.multiSelection)
         self.popup_menu.exec_(event.globalPos())
 
     def jumpToFrame(self):
@@ -1587,6 +1508,8 @@ class BlurDeformDialog(Dialog):
         self.uiOptionsBTN.setIcon(_icons["gear"])
         self.uiOptionsBTN.setText("")
 
+        self.uiFramesTW.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+
         self.create_popup_menu()
         self.uiFramesTW.contextMenuEvent = self.on_context_menu
 
@@ -1651,6 +1574,32 @@ class BlurDeformDialog(Dialog):
             self.layout().addWidget(self.blurTimeSlider)
         # cmds.evalDeferred (self.refreshForShow )
         self.uiPoseGB.setChecked(False)
+
+        QtCore.QObject.connect(
+            self.uiPosesTW,
+            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
+            self.refreshPoseInfo,
+        )
+        QtCore.QObject.connect(
+            self.uiPosesTW,
+            QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
+            self.renamePose,
+        )
+        QtCore.QObject.connect(
+            self.uiBlurNodesTW,
+            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
+            self.changedSelection,
+        )
+        QtCore.QObject.connect(
+            self.uiFramesTW,
+            QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
+            self.changeTheFrame,
+        )
+        QtCore.QObject.connect(
+            self.uiFramesTW,
+            QtCore.SIGNAL("itemSelectionChanged()"),
+            self.selectFrameInTimeLine,
+        )
 
     def selectProximityKey(self):
         currTime = cmds.currentTime(q=True)

@@ -20,6 +20,19 @@ def getQTObject():
     return el
 
 
+class toggleBlockSignals(object):
+    def __init__(self, listWidgets, raise_error=True):
+        self.listWidgets = listWidgets
+
+    def __enter__(self):
+        for widg in self.listWidgets:
+            widg.blockSignals(True)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for widg in self.listWidgets:
+            widg.blockSignals(False)
+
+
 # spinner connected to an attribute
 class spinnerWidget(QtGui.QWidget):
     def offsetSpin_mousePressEvent(self, event):
@@ -248,7 +261,7 @@ class KeyFrameBtn(QtGui.QPushButton):
         else:
             self.setStyleSheet(self.baseColor)
 
-    def select(self, addSel=False):
+    def select(self, addSel=False, selectInTree=True):
         if not addSel:
             for el in self.theTimeSlider.listKeys:
                 el.checked = False
@@ -257,9 +270,11 @@ class KeyFrameBtn(QtGui.QPushButton):
         cmds.evalDeferred(self.setFocus)
 
         # select in parent :
-        index = self.theTimeSlider.listKeys.index(self)
-        itemFrame = self.mainWindow.uiFramesTW.topLevelItem(index)
-        self.mainWindow.uiFramesTW.setCurrentItem(itemFrame)
+        if selectInTree:
+            with toggleBlockSignals([self.mainWindow.uiFramesTW]):
+                index = self.theTimeSlider.listKeys.index(self)
+                itemFrame = self.mainWindow.uiFramesTW.topLevelItem(index)
+                self.mainWindow.uiFramesTW.setCurrentItem(itemFrame)
         self.setStyleSheet(self.lightColor)
 
     def updatePosition(self, startPos=None, oneKeySize=None, start=None, end=None):
