@@ -17,7 +17,7 @@ from studio.gui.resource import Icons
 from PyQt4 import QtGui, QtCore
 import blurdev.debug
 
-from . import extraWidgets, blurAddPose
+from . import extraWidgets, blurAddPose, storeXml
 from functools import partial
 from xml.dom import minidom
 import xml.etree.ElementTree as ET
@@ -601,7 +601,6 @@ class BlurDeformDialog(Dialog):
                     if not vectorMovementsIndices:
                         frameItem.setBackground(0, QtGui.QBrush(self.blueCol))
                         frameItem.setText(1, "\u00D8")
-                        frameItem.setTextAlignment(1, QtCore.Qt.AlignCenter)
                         listFramesViewPort.append((deformFrame, True))
                     else:
                         listFramesViewPort.append((deformFrame, False))
@@ -736,6 +735,7 @@ class BlurDeformDialog(Dialog):
         # blurdev.debug.debugMsg( "hello "  +  item.row (), blurdev.debug.DebugLevel.High)
         self.currentBlurNode = str(item.text(0))
         self.currentGeom = str(item.text(1))
+        self.blurTimeSlider.deleteKeys()
         self.refreshListPoses()
 
     def fillTreeOfBlurNodes(self):
@@ -891,8 +891,8 @@ class BlurDeformDialog(Dialog):
         self.popup_option.addAction(
             _icons["restore"], "restore from backUp", self.restoreBackUp
         )
-        self.popup_option.addAction("store xml file", self.storeXmlFileOfPoses)
-        self.popup_option.addAction("retrieve xml file", self.retrieveXml)
+        self.popup_option.addAction("store xml file", self.callSaveXml)
+        self.popup_option.addAction("retrieve xml file", self.callOpenXml)
 
         if cmds.optionVar(exists="blurScluptKeep"):
             setChecked = cmds.optionVar(q="blurScluptKeep") == 1
@@ -966,10 +966,10 @@ class BlurDeformDialog(Dialog):
             posesIndices = map(int, pses)
             for logicalInd in posesIndices:
                 dicVal["indPose"] = logicalInd
-                thePose = cmds.getAttr(
+                poseName = cmds.getAttr(
                     "{blurNode}.poses[{indPose}].poseName".format(**dicVal)
                 )
-                dicPoses[dicPoses] = dicPoses
+                dicPoses[poseName] = logicalInd
             newInd = max(posesIndices) + 1
 
         for blurNode_tag in root.getchildren():
@@ -1104,7 +1104,7 @@ class BlurDeformDialog(Dialog):
                             *floatVal
                         )
 
-    def storeInfoBlurSculpt(self, doc, blurNode):
+    def storeInfoBlurSculpt(self, doc, blurNode, inputPoseFramesIndices={}):
         blurNode_tag = doc.createElement("blurSculpt")
         blurNode_tag.setAttribute("name", blurNode)
         geom = self.getGeom(blurNode, transform=True)
@@ -1116,6 +1116,8 @@ class BlurDeformDialog(Dialog):
         dicVal = {"blurNode": blurNode}
 
         posesIndices = map(int, cmds.getAttr(blurNode + ".poses", mi=True))
+        if inputPoseFramesIndices:
+            posesIndices = inputPoseFramesIndices.keys()
 
         # first store positions
         for logicalInd in posesIndices:
@@ -1159,6 +1161,9 @@ class BlurDeformDialog(Dialog):
             listDeformationsIndices = cmds.getAttr(
                 "{blurNode}.poses[{indPose}].deformations".format(**dicVal), mi=True
             )
+            if inputPoseFramesIndices:
+                listDeformationsIndices = inputPoseFramesIndices[logicalInd]
+
             if not listDeformationsIndices:
                 continue
 
@@ -1548,6 +1553,36 @@ class BlurDeformDialog(Dialog):
         """
 
     addPoseWin = None
+
+    def callSaveXml(self):
+        self.toRestore = []
+        for el in self.__dict__.values():
+            try:
+                if self.isEnabled():
+                    el.setEnabled(False)
+                    self.toRestore.append(el)
+            except:
+                continue
+
+        blurdev.launch(storeXml.StoreXml, instance=True)
+        self.saveXmlWin.setEnabled(True)
+        self.saveXmlWin.setUpFilePicker(store=True)
+        self.saveXmlWin.refreshTree(self.currentBlurNode)
+
+    def callOpenXml(self):
+        self.toRestore = []
+        for el in self.__dict__.values():
+            try:
+                if self.isEnabled():
+                    el.setEnabled(False)
+                    self.toRestore.append(el)
+            except:
+                continue
+
+        blurdev.launch(storeXml.StoreXml, instance=True)
+        self.saveXmlWin.setEnabled(True)
+        self.saveXmlWin.setUpFilePicker(store=False)
+
     # ------------------- INIT ----------------------------------------------------
     def __init__(self, parent=None):
         super(BlurDeformDialog, self).__init__(parent)
