@@ -185,13 +185,20 @@ class BlurDeformDialog(Dialog):
                 int, cmds.getAttr(self.currentPose + ".deformations", mi=True)
             )
 
-            # listDeformationsFrame = cmds.blurSculpt (self.currentBlurNode,query = True,listFrames = True, poseName=str(poseName) )
-            listDeformationsFrame = self.getListDeformationFrames()
+            dicVal = {"pose": self.currentPose}
+
+            listDeformationsFrame = {}
+            for ind in listDeformationsIndices:
+                dicVal["ind"] = ind
+                frame = cmds.getAttr(
+                    "{pose}.deformations[{ind}].frame".format(**dicVal)
+                )
+                listDeformationsFrame[frame] = ind
+
             if prevTime not in listDeformationsFrame:
                 return
-            oldIndex = listDeformationsFrame.index(prevTime)
+            oldIndex = listDeformationsFrame[prevTime]
 
-            dicVal = {"pose": self.currentPose}
             dicVal["frame"] = max(listDeformationsIndices) + 1
             dicVal["prevFrame"] = oldIndex
 
