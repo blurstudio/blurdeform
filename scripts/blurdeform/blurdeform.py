@@ -926,6 +926,7 @@ class BlurDeformDialog(Dialog):
             self.popup_option.actions()[5].setText(
                 "set distance offset [{0}]".format(self.offset)
             )
+            cmds.optionVar(floatValue=["blurScluptOffset", self.offset])
         except:
             pass
 
@@ -1614,7 +1615,12 @@ class BlurDeformDialog(Dialog):
     # ------------------- INIT ----------------------------------------------------
     def __init__(self, parent=None):
         super(BlurDeformDialog, self).__init__(parent)
-        self.offset = 0.001
+
+        if cmds.optionVar(exists="blurScluptOffset"):
+            self.offset = cmds.optionVar(q="blurScluptOffset")
+        else:
+            self.offset = 0.001
+
         # load the ui
         import __main__
 
