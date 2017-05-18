@@ -1502,7 +1502,9 @@ class BlurDeformDialog(Dialog):
             if not prevIndices:
                 prevIndices = []
             # add the pose
-            cmds.blurSculpt(self.currentGeom, addAtTime=geom, poseName=poseName)
+            cmds.blurSculpt(
+                self.currentGeom, addAtTime=geom, poseName=poseName, offset=self.offset
+            )
 
             postIndices = cmds.getAttr(
                 "{blurNode}.poses[{indPose}].deformations".format(**dicVal), mi=True
