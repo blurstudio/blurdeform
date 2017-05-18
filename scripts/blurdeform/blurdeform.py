@@ -277,7 +277,12 @@ class BlurDeformDialog(Dialog):
             # empty it the channel
             self.clearVectorMvts(currTime)
 
-        cmds.blurSculpt(self.currentGeom, addAtTime=meshToAddAsFrame, poseName=poseName)
+        cmds.blurSculpt(
+            self.currentGeom,
+            addAtTime=meshToAddAsFrame,
+            poseName=poseName,
+            offset=self.offset,
+        )
         # theBasePanel = self.doIsolate (state=0)
         cmds.hide(meshToAddAsFrame)
         self.exitEditMode()
@@ -900,6 +905,9 @@ class BlurDeformDialog(Dialog):
         )
         self.popup_option.addAction("store xml file", self.callSaveXml)
         self.popup_option.addAction("retrieve xml file", self.callOpenXml)
+        self.popup_option.addAction(
+            "set distance offset [{0}]".format(self.offset), self.setDistanceOffset
+        )
 
         if cmds.optionVar(exists="blurScluptKeep"):
             setChecked = cmds.optionVar(q="blurScluptKeep") == 1
@@ -907,8 +915,19 @@ class BlurDeformDialog(Dialog):
             setChecked = False
         self.keepShapes = setChecked
         newAction.setChecked(setChecked)
-
         self.uiOptionsBTN.mousePressEvent = self.popMenuMousePressEvent
+
+    def setDistanceOffset(self):
+        cmds.promptDialog(m="set distance", text="{0}".format(self.offset))
+        val = cmds.promptDialog(q=True, text=True)
+        try:
+            val = float(val)
+            self.offset = val
+            self.popup_option.actions()[5].setText(
+                "set distance offset [{0}]".format(self.offset)
+            )
+        except:
+            pass
 
     def popMenuMousePressEvent(self, event):
         self.popup_option.exec_(event.globalPos())
@@ -1593,6 +1612,7 @@ class BlurDeformDialog(Dialog):
     # ------------------- INIT ----------------------------------------------------
     def __init__(self, parent=None):
         super(BlurDeformDialog, self).__init__(parent)
+        self.offset = 0.001
         # load the ui
         import __main__
 
