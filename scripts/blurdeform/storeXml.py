@@ -1,7 +1,7 @@
 from __future__ import print_function
 from blurdev.gui import Dialog
 from studio.gui.resource import Icons
-from PyQt4 import QtGui, QtCore
+from Qt import QtWidgets, QtCore
 import blurdev.debug
 
 from . import extraWidgets
@@ -37,7 +37,7 @@ class StoreXml(Dialog):
             self.storewin = True
             self.uiDoStoreBTN.setText("store xml")
             self.uiXmlStoreFile.pyOpenFile = False
-            self.uiXmlStoreFile.pyCaption = QtCore.QString("Store xml...")
+            self.uiXmlStoreFile.pyCaption = "Store xml..."
             self.uiDoStoreBTN.setEnabled(False)
             self.setWindowTitle("Store xml file")
 
@@ -45,9 +45,7 @@ class StoreXml(Dialog):
             self.storewin = False
             self.uiDoStoreBTN.setText("restore selected frames")
             self.uiXmlStoreFile.pyOpenFile = True
-            self.uiXmlStoreFile.pyCaption = QtCore.QString(
-                "select file to load from..."
-            )
+            self.uiXmlStoreFile.pyCaption = "select file to load from..."
             self.setWindowTitle("Restore from xml file")
 
         self.uiAllFramesTW.setEnabled(self.storewin)
@@ -90,7 +88,7 @@ class StoreXml(Dialog):
                     mi=True,
                 )
 
-                frameItem = QtGui.QTreeWidgetItem()
+                frameItem = QtWidgets.QTreeWidgetItem()
                 frameItem.setText(0, str(blurNode))
                 frameItem.setText(1, str(thePose))
                 frameItem.setText(2, str(frame))
@@ -135,8 +133,8 @@ class StoreXml(Dialog):
         dicFrames = {}
         listPoses = []
         for frameItem in selectedItems:
-            frame_tag = frameItem.data(0, QtCore.Qt.UserRole).toPyObject()
-            pose_tag = frameItem.data(1, QtCore.Qt.UserRole).toPyObject()
+            frame_tag = frameItem.data(0, QtCore.Qt.UserRole)
+            pose_tag = frameItem.data(1, QtCore.Qt.UserRole)
             poseName = pose_tag.get("poseName")
 
             if poseName not in dicFrames:
@@ -300,7 +298,7 @@ class StoreXml(Dialog):
 
         if selectedItems:
             for frameItem in selectedItems:
-                fullName = str(frameItem.data(0, QtCore.Qt.UserRole).toString())
+                fullName = str(frameItem.data(0, QtCore.Qt.UserRole))
                 poseInd, frameInd = [
                     int(ind) for ind in re.findall(r"\b\d+\b", fullName)
                 ]
@@ -341,7 +339,7 @@ class StoreXml(Dialog):
                     frame = float(frame_tag.get("frame"))
                     vector_tag = frame_tag.getchildren()[0]
 
-                    frameItem = QtGui.QTreeWidgetItem()
+                    frameItem = QtWidgets.QTreeWidgetItem()
                     frameItem.setText(0, str(blurName))
                     frameItem.setText(1, str(poseName))
                     frameItem.setText(2, str(frame))
@@ -380,7 +378,9 @@ class StoreXml(Dialog):
 
         self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Store xml file")
-        self.uiAllFramesTW.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+        self.uiAllFramesTW.setSelectionMode(
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
         self.uiAllFramesTW.setAlternatingRowColors(True)
 
         self.uiDoStoreBTN.clicked.connect(self.buttonAction)

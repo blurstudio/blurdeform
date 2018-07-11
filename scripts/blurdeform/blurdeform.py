@@ -14,7 +14,7 @@
 from __future__ import print_function
 from blurdev.gui import Dialog
 from studio.gui.resource import Icons
-from PyQt4 import QtGui, QtCore
+from Qt import QtGui, QtCore, QtWidgets, QtCompat
 import blurdev.debug
 
 from . import extraWidgets, blurAddPose, storeXml
@@ -104,7 +104,7 @@ class BlurDeformDialog(Dialog):
         if not selectedFrames:
             return
         for frameItem in selectedFrames:
-            frameName = str(frameItem.data(0, QtCore.Qt.UserRole).toString())
+            frameName = str(frameItem.data(0, QtCore.Qt.UserRole))
             mvtIndices = cmds.getAttr(frameName + ".vectorMovements", mi=True)
             if mvtIndices:
                 mvtIndices = map(int, mvtIndices)
@@ -315,13 +315,15 @@ class BlurDeformDialog(Dialog):
 
     def addEmptyFrame(self):
         poseName = cmds.getAttr(self.currentPose + ".poseName")
-        listDeformationsIndices = map(
-            int, cmds.getAttr(self.currentPose + ".deformations", mi=True)
-        )
+        deformList = cmds.getAttr(self.currentPose + ".deformations", mi=True)
+
+        listDeformationsIndices = map(int, deformList) if deformList else []
         currTime = cmds.currentTime(q=True)
 
         dicVal = {"pose": self.currentPose}
-        dicVal["frame"] = max(listDeformationsIndices) + 1
+        dicVal["frame"] = (
+            max(listDeformationsIndices) + 1 if listDeformationsIndices else 0
+        )
         listDeformationsFrame = self.getListDeformationFrames()
 
         if currTime in listDeformationsFrame:
@@ -365,7 +367,7 @@ class BlurDeformDialog(Dialog):
         )
         if res == "Yes":
             for currentFrameItem in self.uiFramesTW.selectedItems():
-                toDelete = str(currentFrameItem.data(0, QtCore.Qt.UserRole).toString())
+                toDelete = str(currentFrameItem.data(0, QtCore.Qt.UserRole))
                 cmds.removeMultiInstance(toDelete, b=True)
             self.refresh()
 
@@ -415,7 +417,7 @@ class BlurDeformDialog(Dialog):
 
     def renamePose(self, item, column):
         newName = item.text(0)
-        blurPose = str(item.data(0, QtCore.Qt.UserRole).toString())
+        blurPose = str(item.data(0, QtCore.Qt.UserRole))
 
         prevName = cmds.getAttr(blurPose + ".poseName")
         if newName != prevName:
@@ -456,7 +458,7 @@ class BlurDeformDialog(Dialog):
             self.uiFramesTW.selectionModel().clearSelection()
 
     def refreshPoseInfo(self, item, prevItem):
-        blurPose = str(item.data(0, QtCore.Qt.UserRole).toString())
+        blurPose = str(item.data(0, QtCore.Qt.UserRole))
         self.currentPose = blurPose
         self.refreshListFrames()
 
@@ -513,7 +515,7 @@ class BlurDeformDialog(Dialog):
         except ValueError:
             cmds.confirmDialog(m="not a float", title="ERROR")
             return
-        frameChannel = str(item.data(0, QtCore.Qt.UserRole).toString())
+        frameChannel = str(item.data(0, QtCore.Qt.UserRole))
         oldFrame = cmds.getAttr(frameChannel + ".frame")
         changeOccured = False
         if floatFrame != oldFrame:
@@ -577,7 +579,7 @@ class BlurDeformDialog(Dialog):
                 ]
                 listDeformationsFrameandIndices.sort()
                 for deformFrame, logicalFrameIndex in listDeformationsFrameandIndices:
-                    frameItem = QtGui.QTreeWidgetItem()
+                    frameItem = QtWidgets.QTreeWidgetItem()
                     frameItem.setText(0, str(deformFrame))
                     frameItem.setFlags(
                         frameItem.flags()
@@ -639,19 +641,19 @@ class BlurDeformDialog(Dialog):
 
             vh = self.uiFramesTW.header()
             vh.setStretchLastSection(False)
-            vh.setResizeMode(QtGui.QHeaderView.Stretch)
-            vh.setResizeMode(0, QtGui.QHeaderView.Stretch)
+            QtCompat.QHeaderView.setSectionResizeMode(vh, vh.Stretch)
+            QtCompat.QHeaderView.setSectionResizeMode(vh, 0, vh.Stretch)
             self.uiFramesTW.setColumnWidth(1, 20)
-            vh.setResizeMode(1, QtGui.QHeaderView.Fixed)
+            QtCompat.QHeaderView.setSectionResizeMode(vh, 1, vh.Fixed)
             self.uiFramesTW.setColumnWidth(2, 50)
-            vh.setResizeMode(2, QtGui.QHeaderView.Fixed)
+            QtCompat.QHeaderView.setSectionResizeMode(vh, 2, vh.Fixed)
             self.uiFramesTW.setColumnWidth(3, 50)
-            vh.setResizeMode(3, QtGui.QHeaderView.Fixed)
+            QtCompat.QHeaderView.setSectionResizeMode(vh, 3, vh.Fixed)
             cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 1, 20))
             cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 2, 50))
             cmds.evalDeferred(partial(self.uiFramesTW.setColumnWidth, 3, 50))
 
-    #        vv.setResizeMode(QtGui.QHeaderView.Stretch)
+    #        QtCompat.QHeaderView.setSectionResizeMode(vv, vh.Stretch)
 
     def refreshListPoses(self, selectLast=False):
         with extraWidgets.toggleBlockSignals([self.uiPosesTW]):
@@ -682,7 +684,7 @@ class BlurDeformDialog(Dialog):
                     "{blurNode}.poses[{indPose}].poseName".format(**dicVal)
                 )
 
-                channelItem = QtGui.QTreeWidgetItem()
+                channelItem = QtWidgets.QTreeWidgetItem()
                 channelItem.setText(0, thePose)
                 channelItem.setText(1, "0.")
                 channelItem.setText(2, "0.")
@@ -728,12 +730,14 @@ class BlurDeformDialog(Dialog):
 
             vh = self.uiPosesTW.header()
             vh.setStretchLastSection(False)
-            vh.setResizeMode(QtGui.QHeaderView.Stretch)
-            vh.setResizeMode(0, QtGui.QHeaderView.Stretch)
+            # Qt.py compat
+            QtCompat.QHeaderView.setSectionResizeMode(vh, vh.Stretch)
+            QtCompat.QHeaderView.setSectionResizeMode(vh, 0, vh.Stretch)
+
             self.uiPosesTW.setColumnWidth(1, 50)
-            vh.setResizeMode(1, QtGui.QHeaderView.Fixed)
+            QtCompat.QHeaderView.setSectionResizeMode(vh, 1, vh.Fixed)
             self.uiPosesTW.setColumnWidth(2, 50)
-            vh.setResizeMode(2, QtGui.QHeaderView.Fixed)
+            QtCompat.QHeaderView.setSectionResizeMode(vh, 2, vh.Fixed)
             cmds.evalDeferred(partial(self.uiPosesTW.setColumnWidth, 1, 50))
             cmds.evalDeferred(partial(self.uiPosesTW.setColumnWidth, 2, 50))
 
@@ -743,12 +747,27 @@ class BlurDeformDialog(Dialog):
             else:
                 self.uiPosesTW.setCurrentItem(self.uiPosesTW.topLevelItem(0))
 
-    def changedSelection(self, item, preItem):
+    def changedSelection(self, item, column):
         # blurdev.debug.debugMsg( "hello "  +  item.row (), blurdev.debug.DebugLevel.High)
         self.currentBlurNode = str(item.text(0))
         self.currentGeom = str(item.text(1))
         self.blurTimeSlider.deleteKeys()
-        self.refreshListPoses()
+        # self.uiEnvelopeWg.doConnectAttrSpinner (self.currentBlurNode +".envelope")
+        self.uiEnvelopeWg.move(50, 0)
+        self.uiEnvelopeWg.resize(50, 18)
+
+        if not self.uiBlurNodesTW.multiSelection:
+            self.uiEnvelopeWg.doConnectAttrSpinner(self.currentBlurNode + ".envelope")
+            self.refreshListPoses()
+        else:
+            selectedItems = [
+                el.text(0) + ".envelope" for el in self.uiBlurNodesTW.selectedItems()
+            ]
+            selectedItems.append(self.currentBlurNode + ".envelope")
+            selectedItems = list(set(selectedItems))
+            self.uiEnvelopeWg.doConnectAttrSpinner(selectedItems)
+
+        self.uiEnvelopeWg.theSpinner.setRange(0, 1)
 
     def fillTreeOfBlurNodes(self):
         with extraWidgets.toggleBlockSignals([self.uiBlurNodesTW]):
@@ -760,7 +779,7 @@ class BlurDeformDialog(Dialog):
             blurNodes = cmds.ls(type="blurSculpt")
             for blrNode in blurNodes:
                 geom = self.getGeom(blrNode, transform=True)
-                channelItem = QtGui.QTreeWidgetItem()
+                channelItem = QtWidgets.QTreeWidgetItem()
                 channelItem.setText(0, blrNode)
                 channelItem.setText(1, geom)
                 self.uiBlurNodesTW.addTopLevelItem(channelItem)
@@ -786,6 +805,8 @@ class BlurDeformDialog(Dialog):
     def selectFromScene(self):
         currentSel = cmds.ls(sl=True)
         if len(currentSel) == 1:
+            self.uiBlurNodesTW.setSelectionMode(1)
+            self.uiBlurNodesTW.multiSelection = False
             obj = currentSel
             hist = cmds.listHistory(obj)
             if hist:
@@ -796,10 +817,21 @@ class BlurDeformDialog(Dialog):
                 ind = blurNodes.index(blurSculpts[0])
                 item = self.uiBlurNodesTW.topLevelItem(ind)
                 self.uiBlurNodesTW.setCurrentItem(item)
+                self.changedSelection(item, 0)
                 # index = self.uiBlurNodesTW.model().index(ind, 0)
-                # self.uiBlurNodesTW.selectionModel().setCurrentIndex (index, QtGui.QItemSelectionModel.selectedRows)
+                # self.uiBlurNodesTW.selectionModel().setCurrentIndex (index, QtWidgets.QItemSelectionModel.selectedRows)
             else:
                 ind = -1
+                self.uiBlurNodesTW.selectionModel().clearSelection()
+                with extraWidgets.toggleBlockSignals(
+                    [self.uiBlurNodesTW, self.uiPosesTW, self.uiFramesTW]
+                ):
+                    self.currentPose = ""
+                    self.currentGeom = ""
+                    self.uiPosesTW.clear()
+                    self.uiFramesTW.clear()
+                    self.uiPosesTW.setColumnCount(3)
+                    self.uiPosesTW.setHeaderLabels(["pose", "gain", "offset"])
 
     # ----------------------- EDIT MODE  --------------------------------------------------
     def enterEditMode(self):
@@ -855,11 +887,12 @@ class BlurDeformDialog(Dialog):
                 ind = blurNodes.index(self.currentBlurNode)
                 item = self.uiBlurNodesTW.topLevelItem(ind)
                 self.uiBlurNodesTW.setCurrentItem(item)
+                self.changedSelection(item, 0)
 
                 foundPose = False
                 for i in range(self.uiPosesTW.topLevelItemCount()):
                     itemPose = self.uiPosesTW.topLevelItem(i)
-                    thePose = str(itemPose.data(0, QtCore.Qt.UserRole).toString())
+                    thePose = str(itemPose.data(0, QtCore.Qt.UserRole))
                     if thePose == currentPose:
                         foundPose = True
                         self.uiPosesTW.setCurrentItem(itemPose)
@@ -885,7 +918,7 @@ class BlurDeformDialog(Dialog):
 
     # ------------------- POPUP ----------------------------------------------------
     def create_popup_menu(self, parent=None):
-        self.popup_menu = QtGui.QMenu(parent)
+        self.popup_menu = QtWidgets.QMenu(parent)
         self.popup_menu.addAction(_icons["toFrame"], "jumpToFrame", self.jumpToFrame)
         self.popup_menu.addAction("duplicate frame", self.doDuplicate)
         self.popup_menu.addAction("select influenced vertices", self.selectVertices)
@@ -896,7 +929,7 @@ class BlurDeformDialog(Dialog):
             _icons["Delete"], "delete (NO UNDO)", self.delete_frame
         )
 
-        self.popup_option = QtGui.QMenu(parent)
+        self.popup_option = QtWidgets.QMenu(parent)
         newAction = self.popup_option.addAction("keep Shapes", self.doKeepShapes)
         newAction.setCheckable(True)
         self.popup_option.addAction(_icons["backUp"], "backUp all Shapes", self.backUp)
@@ -1251,7 +1284,7 @@ class BlurDeformDialog(Dialog):
 
         return blurNode_tag
 
-    def backUp(self):
+    def backUp(self, withBlendShape=True):
         blurGrp = cmds.createNode("transform", n="{0}_".format(self.currentBlurNode))
         listPoses = cmds.blurSculpt(self.currentBlurNode, query=True, listPoses=True)
         if not listPoses:
@@ -1262,6 +1295,7 @@ class BlurDeformDialog(Dialog):
 
         # first store positions
         storedStates = {}
+        createdShapes = []
         for logicalInd in posesIndices:
             dicVal["indPose"] = logicalInd
             poseAttr = "{blurNode}.poses[{indPose}].poseEnabled".format(**dicVal)
@@ -1381,11 +1415,22 @@ class BlurDeformDialog(Dialog):
                 frameName = "{0}_{1}_f{2}_".format(
                     self.currentBlurNode, thePose, int(frame)
                 )
+                if withBlendShape:
+                    (deform,) = cmds.duplicate(self.currentGeom, name="deform")
+                    cmds.setAttr(self.currentBlurNode + ".envelope", 0)
+                    (frameDup,) = cmds.duplicate(self.currentGeom, name=frameName)
+                    cmds.setAttr(self.currentBlurNode + ".envelope", 1)
+                    (newBS,) = cmds.blendShape(deform, frameDup)
+                    cmds.setAttr(newBS + ".w[0]", 1)
+                    cmds.delete(cmds.ls(cmds.listHistory(newBS), type="tweak"))
+                    cmds.delete(deform)
+                else:
+                    (frameDup,) = cmds.duplicate(self.currentGeom, name=frameName)
 
-                (frameDup,) = cmds.duplicate(self.currentGeom, name=frameName)
                 frameDup = cmds.parent(frameDup, thePoseGrp)
                 cmds.hide(frameDup)
                 frameDup = str(frameDup[0])
+                createdShapes.append(frameDup)
                 # add attributes -------------------------------------------------------------------------------------
 
                 for att in ["gain", "offset", "frameEnabled"]:
@@ -1409,6 +1454,8 @@ class BlurDeformDialog(Dialog):
         # restoreVals
         for attr, val in storedStates.items():
             cmds.setAttr(attr, val)
+
+        return createdShapes
 
     def restoreBackUp(self):
         selectedGeometries = [
@@ -1550,7 +1597,7 @@ class BlurDeformDialog(Dialog):
         cmds.currentTime(frameIndex)
 
     def selectVertices(self):
-        frameChannel = str(self.clickedItem.data(0, QtCore.Qt.UserRole).toString())
+        frameChannel = str(self.clickedItem.data(0, QtCore.Qt.UserRole))
         vertices = cmds.getAttr(frameChannel + ".vectorMovements", mi=True)
         if vertices:
             with extraWidgets.WaitCursorCtxt():
@@ -1657,65 +1704,31 @@ class BlurDeformDialog(Dialog):
         self.uiOptionsBTN.setIcon(_icons["gear"])
         self.uiOptionsBTN.setText("")
 
-        self.uiFramesTW.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+        self.uiFramesTW.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
         self.create_popup_menu()
         self.uiFramesTW.contextMenuEvent = self.on_context_menu
 
-        QtCore.QObject.connect(
-            self.uiPoseGB, QtCore.SIGNAL("toggled(bool)"), self.resizePoseInfo
-        )
-        QtCore.QObject.connect(
-            self.uiRefreshBTN, QtCore.SIGNAL("clicked()"), self.refresh
-        )
-        QtCore.QObject.connect(
-            self.uiFromSelectionBTN, QtCore.SIGNAL("clicked()"), self.selectFromScene
-        )
-        QtCore.QObject.connect(
-            self.uiEmptyFrameBTN, QtCore.SIGNAL("clicked()"), self.addEmptyFrame
-        )
+        self.uiPoseGB.toggled.connect(self.resizePoseInfo)
+        self.uiRefreshBTN.clicked.connect(self.refresh)
+        self.uiFromSelectionBTN.clicked.connect(self.selectFromScene)
+        self.uiEmptyFrameBTN.clicked.connect(self.addEmptyFrame)
 
         # - delete
-        QtCore.QObject.connect(
-            self.uiDeleteBlurNodeBTN, QtCore.SIGNAL("clicked()"), self.delete_sculpt
-        )
-        QtCore.QObject.connect(
-            self.uiDeleteFrameBTN, QtCore.SIGNAL("clicked()"), self.delete_frame
-        )
-        QtCore.QObject.connect(
-            self.uiDeletePoseBTN, QtCore.SIGNAL("clicked()"), self.delete_pose
-        )
+        self.uiDeleteBlurNodeBTN.clicked.connect(self.delete_sculpt)
+        self.uiDeleteFrameBTN.clicked.connect(self.delete_frame)
+        self.uiDeletePoseBTN.clicked.connect(self.delete_pose)
         # - Add
-        QtCore.QObject.connect(
-            self.uiAddBlurNodeBTN, QtCore.SIGNAL("clicked()"), self.addDeformer
-        )
-        QtCore.QObject.connect(
-            self.uiAddFrameBTN, QtCore.SIGNAL("clicked()"), self.addNewFrame
-        )
-        QtCore.QObject.connect(
-            self.uiAddPoseBTN, QtCore.SIGNAL("clicked()"), self.callAddPose
-        )
-        QtCore.QObject.connect(
-            self.uiEditModeBTN, QtCore.SIGNAL("clicked()"), self.enterEditMode
-        )
-        QtCore.QObject.connect(
-            self.uiExitEditModeBTN, QtCore.SIGNAL("clicked()"), self.exitEditMode
-        )
+        self.uiAddBlurNodeBTN.clicked.connect(self.addDeformer)
+        self.uiAddFrameBTN.clicked.connect(self.addNewFrame)
+        self.uiAddPoseBTN.clicked.connect(self.callAddPose)
+        self.uiEditModeBTN.clicked.connect(self.enterEditMode)
+        self.uiExitEditModeBTN.clicked.connect(self.exitEditMode)
 
-        QtCore.QObject.connect(
-            self.uiPickTransformBTN, QtCore.SIGNAL("clicked()"), self.connectMatrix
-        )
-        QtCore.QObject.connect(
-            self.uiDisconnectMatrixBTN,
-            QtCore.SIGNAL("clicked()"),
-            self.disConnectMatrix,
-        )
+        self.uiPickTransformBTN.clicked.connect(self.connectMatrix)
+        self.uiDisconnectMatrixBTN.clicked.connect(self.disConnectMatrix)
 
-        QtCore.QObject.connect(
-            self.uiBlurNodesTW,
-            QtCore.SIGNAL("itemDoubleClicked(QTreeWidgetItem*,int)"),
-            self.doubleClickChannel,
-        )
+        self.uiBlurNodesTW.itemDoubleClicked.connect(self.doubleClickChannel)
 
         # time slider part
         if self.addTimeLine:
@@ -1724,31 +1737,43 @@ class BlurDeformDialog(Dialog):
         # cmds.evalDeferred (self.refreshForShow )
         self.uiPoseGB.setChecked(False)
 
-        QtCore.QObject.connect(
-            self.uiPosesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.refreshPoseInfo,
-        )
-        QtCore.QObject.connect(
-            self.uiPosesTW,
-            QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-            self.renamePose,
-        )
-        QtCore.QObject.connect(
-            self.uiBlurNodesTW,
-            QtCore.SIGNAL("currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)"),
-            self.changedSelection,
-        )
-        QtCore.QObject.connect(
-            self.uiFramesTW,
-            QtCore.SIGNAL("itemChanged(QTreeWidgetItem*,int)"),
-            self.changeTheFrame,
-        )
-        QtCore.QObject.connect(
-            self.uiFramesTW,
-            QtCore.SIGNAL("itemSelectionChanged()"),
-            self.selectFrameInTimeLine,
-        )
+        self.uiPosesTW.currentItemChanged.connect(self.refreshPoseInfo)
+        self.uiPosesTW.itemChanged.connect(self.renamePose)
+
+        self.uiBlurNodesTW.multiSelection = False
+        self.uiBlurNodesTW.mousePressEvent = self.uiBlurNodesTWMPE
+        # self.uiBlurNodesTW.currentItemChanged.connect(self.changedSelection)
+        self.uiBlurNodesTW.itemClicked.connect(self.changedSelection)
+
+        self.uiFramesTW.itemChanged.connect(self.changeTheFrame)
+        self.uiFramesTW.itemSelectionChanged.connect(self.selectFrameInTimeLine)
+
+        self.uiEnvelopeWg = extraWidgets.spinnerWidget("", singleStep=1.0, precision=1)
+        self.uiEnvelopeWg.setParent(self.label)
+        self.uiEnvelopeWg.move(50, 0)
+        self.uiEnvelopeWg.resize(50, 25)
+
+    def uiBlurNodesTWMPE(self, *args):
+        shiftPressed = args[0].modifiers() == QtCore.Qt.ShiftModifier
+        ctrlPressed = shiftPressed or (args[0].modifiers() == QtCore.Qt.ControlModifier)
+
+        # print "PRESSED", ctrlPressed
+        if ctrlPressed:
+            if shiftPressed:
+                self.uiBlurNodesTW.setSelectionMode(3)
+            else:
+                self.uiBlurNodesTW.setSelectionMode(
+                    2
+                )  # QtWidgets.QAbstractView.MultiSelection)
+            with extraWidgets.toggleBlockSignals(
+                [self.uiBlurNodesTW, self.uiPosesTW, self.uiFramesTW]
+            ):
+                self.uiPosesTW.clear()
+                self.uiFramesTW.clear()
+        else:
+            self.uiBlurNodesTW.setSelectionMode(1)
+        self.uiBlurNodesTW.multiSelection = ctrlPressed
+        QtWidgets.QTreeWidget.mousePressEvent(self.uiBlurNodesTW, *args)
 
     def selectProximityKey(self):
         currTime = cmds.currentTime(q=True)

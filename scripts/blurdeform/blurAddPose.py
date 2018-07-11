@@ -1,6 +1,6 @@
 from blurdev.gui import Dialog
 from studio.gui.resource import Icons
-from PyQt4 import QtGui, QtCore
+from Qt import QtCore
 import blurdev.debug
 
 
@@ -63,35 +63,13 @@ class BlurAddPose(Dialog):
         self.uiTransformLE.setText("N/A")
         self.uiPoseNameLE.setText("newPose")
 
-        QtCore.QObject.connect(
-            self.uiAddPoseBTN, QtCore.SIGNAL("clicked()"), self.addNewPose
-        )
-        QtCore.QObject.connect(
-            self.uiPickTransformBTN,
-            QtCore.SIGNAL("clicked()"),
-            self.getSelectedTransform,
-        )
+        self.uiAddPoseBTN.clicked.connect(self.addNewPose)
+        self.uiPickTransformBTN.clicked.connect(self.getSelectedTransform)
 
-        QtCore.QObject.connect(
-            self.uiLocalDeformationRB,
-            QtCore.SIGNAL("toggled(bool)"),
-            self.uiTransformLE.setEnabled,
-        )
-        QtCore.QObject.connect(
-            self.uiLocalDeformationRB,
-            QtCore.SIGNAL("toggled( bool)"),
-            self.uiPickTransformBTN.setEnabled,
-        )
-        QtCore.QObject.connect(
-            self.uiLocalDeformationRB,
-            QtCore.SIGNAL("toggled( bool)"),
-            self.uiUseTransformLBL.setEnabled,
-        )
-        QtCore.QObject.connect(
-            self.uiTangentDeformationRB,
-            QtCore.SIGNAL("toggled( bool)"),
-            self.uiWarningLabel.setVisible,
-        )
+        self.uiLocalDeformationRB.toggled.connect(self.uiTransformLE.setEnabled)
+        self.uiLocalDeformationRB.toggled.connect(self.uiPickTransformBTN.setEnabled)
+        self.uiLocalDeformationRB.toggled.connect(self.uiUseTransformLBL.setEnabled)
+        self.uiTangentDeformationRB.toggled.connect(self.uiWarningLabel.setVisible)
         self.uiWarningLabel.setVisible(False)
         self.uiWarningExistPoseNameLabel.hide()
 

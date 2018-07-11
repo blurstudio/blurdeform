@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>582</width>
-    <height>593</height>
+    <width>585</width>
+    <height>703</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -60,6 +60,21 @@
        <property name="spacing">
         <number>2</number>
        </property>
+       <item row="0" column="0" rowspan="4">
+        <widget class="QTreeWidget" name="uiBlurNodesTW">
+         <attribute name="headerVisible">
+          <bool>true</bool>
+         </attribute>
+         <attribute name="headerVisible">
+          <bool>true</bool>
+         </attribute>
+         <column>
+          <property name="text">
+           <string notr="true">1</string>
+          </property>
+         </column>
+        </widget>
+       </item>
        <item row="0" column="1">
         <widget class="QPushButton" name="uiFromSelectionBTN">
          <property name="maximumSize">
@@ -76,8 +91,8 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="2">
-        <widget class="QPushButton" name="uiDeleteBlurNodeBTN">
+       <item row="0" column="2">
+        <widget class="QPushButton" name="uiRefreshBTN">
          <property name="maximumSize">
           <size>
            <width>24</width>
@@ -85,10 +100,10 @@
           </size>
          </property>
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;delete current blurSculpt&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;refresh scene&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="text">
-          <string>X</string>
+          <string>r</string>
          </property>
         </widget>
        </item>
@@ -108,20 +123,8 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="0" rowspan="4">
-        <widget class="QTreeWidget" name="uiBlurNodesTW">
-         <attribute name="headerVisible">
-          <bool>true</bool>
-         </attribute>
-         <column>
-          <property name="text">
-           <string notr="true">1</string>
-          </property>
-         </column>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="QPushButton" name="uiRefreshBTN">
+       <item row="1" column="2">
+        <widget class="QPushButton" name="uiDeleteBlurNodeBTN">
          <property name="maximumSize">
           <size>
            <width>24</width>
@@ -129,10 +132,10 @@
           </size>
          </property>
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;refresh scene&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;delete current blurSculpt&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="text">
-          <string>r</string>
+          <string>X</string>
          </property>
         </widget>
        </item>
@@ -164,7 +167,7 @@
          <number>4</number>
         </property>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <layout class="QHBoxLayout" name="uiPoseLayout">
           <property name="spacing">
            <number>0</number>
           </property>
@@ -229,6 +232,9 @@
         </item>
         <item>
          <widget class="QTreeWidget" name="uiPosesTW">
+          <attribute name="headerVisible">
+           <bool>true</bool>
+          </attribute>
           <attribute name="headerVisible">
            <bool>true</bool>
           </attribute>
@@ -468,6 +474,9 @@
           <property name="itemsExpandable">
            <bool>true</bool>
           </property>
+          <attribute name="headerVisible">
+           <bool>true</bool>
+          </attribute>
           <attribute name="headerVisible">
            <bool>true</bool>
           </attribute>

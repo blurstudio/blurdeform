@@ -1,5 +1,6 @@
+from __future__ import print_function
 from maya import OpenMaya, OpenMayaMPx, OpenMayaUI, cmds, mel
-from PyQt4 import QtGui, QtCore
+from Qt import QtWidgets, QtCore, QtGui
 import blurdev
 import sip
 
@@ -34,22 +35,28 @@ class toggleBlockSignals(object):
 
 
 # spinner connected to an attribute
-class spinnerWidget(QtGui.QWidget):
+class spinnerWidget(QtWidgets.QWidget):
     def offsetSpin_mousePressEvent(self, event):
-        if cmds.objExists(self.theAttr):
-            val = cmds.getAttr(self.theAttr)
-            self.theSpinner.setValue(val)
-            QtGui.QDoubleSpinBox.mousePressEvent(self.theSpinner, event)
+        theAttrs = self.theAttr if isinstance(self.theAttr, list) else [self.theAttr]
+        for theAttr in theAttrs:
+            if cmds.objExists(theAttr):
+                val = cmds.getAttr(theAttr)
+                self.theSpinner.setValue(val)
+                QtWidgets.QDoubleSpinBox.mousePressEvent(self.theSpinner, event)
 
     def offsetSpin_wheelEvent(self, event):
-        if cmds.objExists(self.theAttr):
-            val = cmds.getAttr(self.theAttr)
-            self.theSpinner.setValue(val)
-            QtGui.QDoubleSpinBox.wheelEvent(self.theSpinner, event)
+        theAttrs = self.theAttr if isinstance(self.theAttr, list) else [self.theAttr]
+        for theAttr in theAttrs:
+            if cmds.objExists(theAttr):
+                val = cmds.getAttr(theAttr)
+                self.theSpinner.setValue(val)
+                QtWidgets.QDoubleSpinBox.wheelEvent(self.theSpinner, event)
 
     def valueChangedFn(self, newVal):
-        if cmds.objExists(self.theAttr) and cmds.getAttr(self.theAttr, settable=True):
-            cmds.setAttr(self.theAttr, newVal)
+        theAttrs = self.theAttr if isinstance(self.theAttr, list) else [self.theAttr]
+        for theAttr in theAttrs:
+            if cmds.objExists(theAttr) and cmds.getAttr(theAttr, settable=True):
+                cmds.setAttr(theAttr, newVal)
 
     def createWidget(self, singleStep=0.1, precision=2):
         theWindowForQtObjects = getQTObject()
@@ -70,9 +77,7 @@ class spinnerWidget(QtGui.QWidget):
         self.theQtObject.move(self.theSpinner.pos())
         self.theQtObject.show()
 
-        QtCore.QObject.connect(
-            self.theSpinner, QtCore.SIGNAL("valueChanged(double)"), self.valueChangedFn
-        )
+        self.theSpinner.valueChanged.connect(self.valueChangedFn)
         # set before click
         self.theSpinner.mousePressEvent = self.offsetSpin_mousePressEvent
         # set before spin
@@ -82,9 +87,12 @@ class spinnerWidget(QtGui.QWidget):
         self.theQtObject.resize(wdth, self.height())
 
     def doConnectAttrSpinner(self, theAttr):
+        print(theAttr)
         self.theAttr = theAttr
-        if cmds.objExists(self.theAttr):
-            cmds.connectControl(self.floatField, self.theAttr)
+        if isinstance(self.theAttr, list):
+            theAttr = self.theAttr[0]
+        if cmds.objExists(theAttr):
+            cmds.connectControl(self.floatField, theAttr)
             minValue, maxValue = -16777214, 16777215
 
             listAtt = theAttr.split(".")
@@ -106,7 +114,7 @@ class spinnerWidget(QtGui.QWidget):
     def __init__(self, theAttr, singleStep=0.1, precision=2):
         super(spinnerWidget, self).__init__()
         self.theAttr = theAttr
-        self.theSpinner = QtGui.QDoubleSpinBox(self)
+        self.theSpinner = QtWidgets.QDoubleSpinBox(self)
         self.theSpinner.setRange(-16777214, 16777215)
         self.theSpinner.setSingleStep(singleStep)
         self.theSpinner.setDecimals(precision)
@@ -117,7 +125,7 @@ class spinnerWidget(QtGui.QWidget):
         self.doConnectAttrSpinner(theAttr)
 
 
-class KeyFrameBtn(QtGui.QPushButton):
+class KeyFrameBtn(QtWidgets.QPushButton):
     _colors = {
         "redColor": "background-color: rgb(154, 10, 10);",
         "redLightColor": "background-color: rgb(255, 153, 255);",
@@ -330,7 +338,7 @@ class KeyFrameBtn(QtGui.QPushButton):
         self.show()
 
 
-class TheTimeSlider(QtGui.QWidget):
+class TheTimeSlider(QtWidgets.QWidget):
     def deleteKeys(self):
         # print "deleteKeys"
         toDelete = [] + self.listKeys
