@@ -777,8 +777,15 @@ class BlurDeformDialog(Dialog):
             self.uiBlurNodesTW.setExpandsOnDoubleClick(False)
 
             blurNodes = cmds.ls(type="blurSculpt")
+            blurNodesSorted = []
             for blrNode in blurNodes:
                 geom = self.getGeom(blrNode, transform=True)
+                if geom:
+                    blurNodesSorted.append((geom, blrNode))
+            blurNodesSorted.sort()
+
+            for geom, blrNode in blurNodesSorted:
+                # geom = self.getGeom (blrNode, transform = True)
                 channelItem = QtWidgets.QTreeWidgetItem()
                 channelItem.setText(0, blrNode)
                 channelItem.setText(1, geom)
@@ -813,7 +820,11 @@ class BlurDeformDialog(Dialog):
                 blurSculpts = cmds.ls(hist, type="blurSculpt")
 
             if hist and blurSculpts:
-                blurNodes = cmds.ls(type="blurSculpt")
+                # blurNodes = cmds.ls (type = 'blurSculpt')
+                blurNodes = [
+                    self.uiBlurNodesTW.topLevelItem(ind).text(0)
+                    for ind in range(self.uiBlurNodesTW.topLevelItemCount())
+                ]
                 ind = blurNodes.index(blurSculpts[0])
                 item = self.uiBlurNodesTW.topLevelItem(ind)
                 self.uiBlurNodesTW.setCurrentItem(item)
@@ -881,7 +892,11 @@ class BlurDeformDialog(Dialog):
 
             self.fillTreeOfBlurNodes()
 
-            blurNodes = cmds.ls(type="blurSculpt")
+            # blurNodes = cmds.ls (type = 'blurSculpt')
+            blurNodes = [
+                self.uiBlurNodesTW.topLevelItem(ind).text(0)
+                for ind in range(self.uiBlurNodesTW.topLevelItemCount())
+            ]
 
             if self.currentBlurNode in blurNodes:
                 ind = blurNodes.index(self.currentBlurNode)
@@ -1285,179 +1300,214 @@ class BlurDeformDialog(Dialog):
         return blurNode_tag
 
     def backUp(self, withBlendShape=True):
-        blurGrp = cmds.createNode("transform", n="{0}_".format(self.currentBlurNode))
-        listPoses = cmds.blurSculpt(self.currentBlurNode, query=True, listPoses=True)
-        if not listPoses:
-            return
-        dicVal = {"blurNode": self.currentBlurNode}
-
-        posesIndices = map(int, cmds.getAttr(self.currentBlurNode + ".poses", mi=True))
-
-        # first store positions
-        storedStates = {}
+        # theBlurNode = self.currentBlurNode
+        selectedItems = [el.text(0) for el in self.uiBlurNodesTW.selectedItems()]
         createdShapes = []
-        for logicalInd in posesIndices:
-            dicVal["indPose"] = logicalInd
-            poseAttr = "{blurNode}.poses[{indPose}].poseEnabled".format(**dicVal)
-            isEnabled = cmds.getAttr(poseAttr)
-            cmds.setAttr(poseAttr, False)
+        with extraWidgets.MayaProgressBar(
+            maxValue=len(selectedItems),
+            status="backUp ...",
+            QTprogress=self.progressBar,
+            frontWindow=False,
+        ) as pBar:
+            for theBlurNode in selectedItems:
+                if not pBar.update():
+                    break
+                blurGrp = cmds.createNode("transform", n="{0}_".format(theBlurNode))
 
-            storedStates[poseAttr] = isEnabled
+                geom = self.getGeom(theBlurNode, transform=True)
+                cmds.addAttr(blurGrp, longName="meshName", dataType="string")
+                cmds.setAttr(blurGrp + ".meshName", edit=True, keyable=True)
+                cmds.setAttr(blurGrp + ".meshName", geom, type="string")
 
-            poseGain = "{blurNode}.poses[{indPose}].poseGain".format(**dicVal)
-            poseOffset = "{blurNode}.poses[{indPose}].poseOffset".format(**dicVal)
-            poseGainVal = cmds.getAttr(poseGain)
-            poseOffsetVal = cmds.getAttr(poseOffset)
-            cmds.setAttr(poseGain, 1.0)
-            cmds.setAttr(poseOffset, 0.0)
+                listPoses = cmds.blurSculpt(theBlurNode, query=True, listPoses=True)
+                if not listPoses:
+                    return
+                dicVal = {"blurNode": theBlurNode}
 
-            storedStates[poseGain] = poseGainVal
-            storedStates[poseOffset] = poseOffsetVal
+                posesIndices = map(int, cmds.getAttr(theBlurNode + ".poses", mi=True))
 
-        for logicalInd in posesIndices:
-            dicVal["indPose"] = logicalInd
-            thePose = cmds.getAttr(
-                "{blurNode}.poses[{indPose}].poseName".format(**dicVal)
-            )
-            thePoseGrp = cmds.createNode(
-                "transform",
-                n="{0}_{1}_".format(self.currentBlurNode, thePose),
-                p=blurGrp,
-            )
-
-            cmds.addAttr(
-                thePoseGrp,
-                longName="deformationType",
-                attributeType="enum",
-                enumName="local:tangent:",
-            )
-            cmds.setAttr(thePoseGrp + ".deformationType", edit=True, keyable=True)
-            deformType = cmds.getAttr(
-                "{blurNode}.poses[{indPose}].deformationType".format(**dicVal)
-            )
-            cmds.setAttr(thePoseGrp + ".deformationType", deformType)
-
-            inConnections = cmds.listConnections(
-                "{blurNode}.poses[{indPose}].poseMatrix".format(**dicVal),
-                s=True,
-                d=False,
-                p=True,
-            )
-            if not inConnections:
-                val = "N/A"
-            else:
-                val = inConnections[0]
-            cmds.addAttr(thePoseGrp, longName="poseMatrix", dataType="string")
-            cmds.setAttr(thePoseGrp + ".poseMatrix", edit=True, keyable=True)
-            cmds.setAttr(thePoseGrp + ".poseMatrix", val, type="string")
-
-            listDeformationsIndices = cmds.getAttr(
-                "{blurNode}.poses[{indPose}].deformations".format(**dicVal), mi=True
-            )
-            if not listDeformationsIndices:
-                continue
-            poseAttr = "{blurNode}.poses[{indPose}].poseEnabled".format(**dicVal)
-            cmds.setAttr(poseAttr, True)
-
-            # add attributes -------------------------------------------------------------------------------------
-            for att in ["poseGain", "poseOffset", "poseEnabled"]:
-                if att == "poseEnabled":
-                    cmds.addAttr(thePoseGrp, longName=att, attributeType="bool")
-                else:
-                    cmds.addAttr(thePoseGrp, longName=att, attributeType="float")
-                cmds.setAttr(thePoseGrp + "." + att, edit=True, keyable=True)
-                dicVal["att"] = att
-                realAtt = "{blurNode}.poses[{indPose}].{att}".format(**dicVal)
-                val = storedStates[realAtt]  # cmds.getAttr (realAtt)
-                cmds.setAttr(thePoseGrp + "." + att, val)
-                inConn = cmds.listConnections(
-                    realAtt, s=True, d=False, c=True, scn=False
-                )
-                if inConn:
-                    cmds.connectAttr(inConn[0], thePoseGrp + "." + att)
-
-            # for all frames -------------------------------------------------------------------------------------
-            for logicalFrameIndex in listDeformationsIndices:
-                dicVal["frameInd"] = logicalFrameIndex
-                frame = cmds.getAttr(
-                    "{blurNode}.poses[{indPose}].deformations[{frameInd}].frame".format(
+                # first store positions
+                storedStates = {}
+                for logicalInd in posesIndices:
+                    dicVal["indPose"] = logicalInd
+                    poseAttr = "{blurNode}.poses[{indPose}].poseEnabled".format(
                         **dicVal
                     )
-                )
+                    isEnabled = cmds.getAttr(poseAttr)
+                    cmds.setAttr(poseAttr, False)
 
-                # store vals --------------------------------------------------------------------------------------------
-                gain = (
-                    "{blurNode}.poses[{indPose}].deformations[{frameInd}].gain".format(
+                    storedStates[poseAttr] = isEnabled
+
+                    poseGain = "{blurNode}.poses[{indPose}].poseGain".format(**dicVal)
+                    poseOffset = "{blurNode}.poses[{indPose}].poseOffset".format(
                         **dicVal
                     )
-                )
-                offset = "{blurNode}.poses[{indPose}].deformations[{frameInd}].offset".format(
-                    **dicVal
-                )
-                gainVal = cmds.getAttr(gain)
-                offsetVal = cmds.getAttr(offset)
-                cmds.setAttr(gain, 1.0)
-                cmds.setAttr(offset, 0.0)
+                    poseGainVal = cmds.getAttr(poseGain)
+                    poseOffsetVal = cmds.getAttr(poseOffset)
+                    cmds.setAttr(poseGain, 1.0)
+                    cmds.setAttr(poseOffset, 0.0)
 
-                storedStates[gain] = gainVal
-                storedStates[offset] = offsetVal
+                    storedStates[poseGain] = poseGainVal
+                    storedStates[poseOffset] = poseOffsetVal
 
-                frameEnabled = "{blurNode}.poses[{indPose}].deformations[{frameInd}].frameEnabled".format(
-                    **dicVal
-                )
-                frameEnabledVal = cmds.getAttr(frameEnabled)
-                cmds.setAttr(frameEnabled, True)
+                for logicalInd in posesIndices:
+                    dicVal["indPose"] = logicalInd
+                    thePose = cmds.getAttr(
+                        "{blurNode}.poses[{indPose}].poseName".format(**dicVal)
+                    )
+                    thePoseGrp = cmds.createNode(
+                        "transform",
+                        n="{0}_{1}_".format(theBlurNode, thePose),
+                        p=blurGrp,
+                    )
 
-                storedStates[frameEnabled] = frameEnabledVal
-                # end vals --------------------------------------------------------------------------------------------
-                cmds.currentTime(frame)
+                    cmds.addAttr(
+                        thePoseGrp,
+                        longName="deformationType",
+                        attributeType="enum",
+                        enumName="local:tangent:",
+                    )
+                    cmds.setAttr(
+                        thePoseGrp + ".deformationType", edit=True, keyable=True
+                    )
+                    deformType = cmds.getAttr(
+                        "{blurNode}.poses[{indPose}].deformationType".format(**dicVal)
+                    )
+                    cmds.setAttr(thePoseGrp + ".deformationType", deformType)
 
-                frameName = "{0}_{1}_f{2}_".format(
-                    self.currentBlurNode, thePose, int(frame)
-                )
-                if withBlendShape:
-                    (deform,) = cmds.duplicate(self.currentGeom, name="deform")
-                    cmds.setAttr(self.currentBlurNode + ".envelope", 0)
-                    (frameDup,) = cmds.duplicate(self.currentGeom, name=frameName)
-                    cmds.setAttr(self.currentBlurNode + ".envelope", 1)
-                    (newBS,) = cmds.blendShape(deform, frameDup)
-                    cmds.setAttr(newBS + ".w[0]", 1)
-                    cmds.delete(cmds.ls(cmds.listHistory(newBS), type="tweak"))
-                    cmds.delete(deform)
-                else:
-                    (frameDup,) = cmds.duplicate(self.currentGeom, name=frameName)
-
-                frameDup = cmds.parent(frameDup, thePoseGrp)
-                cmds.hide(frameDup)
-                frameDup = str(frameDup[0])
-                createdShapes.append(frameDup)
-                # add attributes -------------------------------------------------------------------------------------
-
-                for att in ["gain", "offset", "frameEnabled"]:
-                    if att == "frameEnabled":
-                        cmds.addAttr(frameDup, longName=att, attributeType="bool")
+                    inConnections = cmds.listConnections(
+                        "{blurNode}.poses[{indPose}].poseMatrix".format(**dicVal),
+                        s=True,
+                        d=False,
+                        p=True,
+                    )
+                    if not inConnections:
+                        val = "N/A"
                     else:
-                        cmds.addAttr(frameDup, longName=att, attributeType="float")
-                    cmds.setAttr(frameDup + "." + att, edit=True, keyable=True)
-                    dicVal["att"] = att
-                    realAtt = "{blurNode}.poses[{indPose}].deformations[{frameInd}].{att}".format(
+                        val = inConnections[0]
+                    cmds.addAttr(thePoseGrp, longName="poseMatrix", dataType="string")
+                    cmds.setAttr(thePoseGrp + ".poseMatrix", edit=True, keyable=True)
+                    cmds.setAttr(thePoseGrp + ".poseMatrix", val, type="string")
+
+                    listDeformationsIndices = cmds.getAttr(
+                        "{blurNode}.poses[{indPose}].deformations".format(**dicVal),
+                        mi=True,
+                    )
+                    if not listDeformationsIndices:
+                        continue
+                    poseAttr = "{blurNode}.poses[{indPose}].poseEnabled".format(
                         **dicVal
                     )
-                    val = storedStates[realAtt]  # cmds.getAttr (realAtt)
-                    cmds.setAttr(frameDup + "." + att, val)
-                    inConn = cmds.listConnections(
-                        realAtt, s=True, d=False, c=True, scn=False
-                    )
-                    if inConn:
-                        cmds.connectAttr(inConn[0], frameDup + "." + att)
+                    cmds.setAttr(poseAttr, True)
 
-        # restoreVals
-        for attr, val in storedStates.items():
-            cmds.setAttr(attr, val)
+                    # add attributes -------------------------------------------------------------------------------------
+                    for att in ["poseGain", "poseOffset", "poseEnabled"]:
+                        if att == "poseEnabled":
+                            cmds.addAttr(thePoseGrp, longName=att, attributeType="bool")
+                        else:
+                            cmds.addAttr(
+                                thePoseGrp, longName=att, attributeType="float"
+                            )
+                        cmds.setAttr(thePoseGrp + "." + att, edit=True, keyable=True)
+                        dicVal["att"] = att
+                        realAtt = "{blurNode}.poses[{indPose}].{att}".format(**dicVal)
+                        val = storedStates[realAtt]  # cmds.getAttr (realAtt)
+                        cmds.setAttr(thePoseGrp + "." + att, val)
+                        inConn = cmds.listConnections(
+                            realAtt, s=True, d=False, c=True, scn=False
+                        )
+                        if inConn:
+                            cmds.connectAttr(inConn[0], thePoseGrp + "." + att)
+
+                    # for all frames -------------------------------------------------------------------------------------
+                    for logicalFrameIndex in listDeformationsIndices:
+                        dicVal["frameInd"] = logicalFrameIndex
+                        frame = cmds.getAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].frame".format(
+                                **dicVal
+                            )
+                        )
+
+                        # store vals --------------------------------------------------------------------------------------------
+                        gain = "{blurNode}.poses[{indPose}].deformations[{frameInd}].gain".format(
+                            **dicVal
+                        )
+                        offset = "{blurNode}.poses[{indPose}].deformations[{frameInd}].offset".format(
+                            **dicVal
+                        )
+                        gainVal = cmds.getAttr(gain)
+                        offsetVal = cmds.getAttr(offset)
+                        cmds.setAttr(gain, 1.0)
+                        cmds.setAttr(offset, 0.0)
+
+                        storedStates[gain] = gainVal
+                        storedStates[offset] = offsetVal
+
+                        frameEnabled = "{blurNode}.poses[{indPose}].deformations[{frameInd}].frameEnabled".format(
+                            **dicVal
+                        )
+                        frameEnabledVal = cmds.getAttr(frameEnabled)
+                        cmds.setAttr(frameEnabled, True)
+
+                        storedStates[frameEnabled] = frameEnabledVal
+                        # end vals --------------------------------------------------------------------------------------------
+                        cmds.currentTime(frame)
+
+                        frameName = "{0}_{1}_f{2}_".format(
+                            theBlurNode, thePose, int(frame)
+                        )
+                        if withBlendShape:
+                            (deform,) = cmds.duplicate(self.currentGeom, name="deform")
+                            cmds.setAttr(theBlurNode + ".envelope", 0)
+                            (frameDup,) = cmds.duplicate(
+                                self.currentGeom, name=frameName
+                            )
+                            cmds.setAttr(theBlurNode + ".envelope", 1)
+                            (newBS,) = cmds.blendShape(deform, frameDup)
+                            cmds.setAttr(newBS + ".w[0]", 1)
+                            cmds.delete(cmds.ls(cmds.listHistory(newBS), type="tweak"))
+                            cmds.delete(deform)
+                        else:
+                            (frameDup,) = cmds.duplicate(
+                                self.currentGeom, name=frameName
+                            )
+
+                        frameDup = cmds.parent(frameDup, thePoseGrp)
+                        cmds.hide(frameDup)
+                        frameDup = str(frameDup[0])
+                        createdShapes.append(frameDup)
+                        # add attributes -------------------------------------------------------------------------------------
+
+                        for att in ["gain", "offset", "frameEnabled"]:
+                            if att == "frameEnabled":
+                                cmds.addAttr(
+                                    frameDup, longName=att, attributeType="bool"
+                                )
+                            else:
+                                cmds.addAttr(
+                                    frameDup, longName=att, attributeType="float"
+                                )
+                            cmds.setAttr(frameDup + "." + att, edit=True, keyable=True)
+                            dicVal["att"] = att
+                            realAtt = "{blurNode}.poses[{indPose}].deformations[{frameInd}].{att}".format(
+                                **dicVal
+                            )
+                            val = storedStates[realAtt]  # cmds.getAttr (realAtt)
+                            cmds.setAttr(frameDup + "." + att, val)
+                            inConn = cmds.listConnections(
+                                realAtt, s=True, d=False, c=True, scn=False
+                            )
+                            if inConn:
+                                cmds.connectAttr(inConn[0], frameDup + "." + att)
+
+                # restoreVals
+                for attr, val in storedStates.items():
+                    cmds.setAttr(attr, val)
 
         return createdShapes
 
     def restoreBackUp(self):
+        theBlurNode = self.currentBlurNode
         selectedGeometries = [
             el
             for el in cmds.ls(sl=True, tr=True, l=True)
@@ -1467,9 +1517,9 @@ class BlurDeformDialog(Dialog):
             cmds.confirmDialog(t="Fail", m="select geometries to restore")
             return
 
-        dicVal = {"blurNode": self.currentBlurNode}
+        dicVal = {"blurNode": theBlurNode}
 
-        posesIndices = cmds.getAttr(self.currentBlurNode + ".poses", mi=True)
+        posesIndices = cmds.getAttr(theBlurNode + ".poses", mi=True)
         if posesIndices:
             posesIndices = map(int, posesIndices)
             poseNames = [
@@ -1510,9 +1560,7 @@ class BlurDeformDialog(Dialog):
                     withRefresh=False,
                 )
 
-                posesIndices = map(
-                    int, cmds.getAttr(self.currentBlurNode + ".poses", mi=True)
-                )
+                posesIndices = map(int, cmds.getAttr(theBlurNode + ".poses", mi=True))
                 poseNames = [
                     cmds.getAttr("{blurNode}.poses[{i}].poseName".format(i=i, **dicVal))
                     for i in posesIndices
@@ -1643,7 +1691,11 @@ class BlurDeformDialog(Dialog):
         blurdev.launch(storeXml.StoreXml, instance=True)
         self.saveXmlWin.setEnabled(True)
         self.saveXmlWin.setUpFilePicker(store=True)
-        self.saveXmlWin.refreshTree(self.currentBlurNode)
+        if self.uiBlurNodesTW.multiSelection:
+            selectedItems = [el.text(0) for el in self.uiBlurNodesTW.selectedItems()]
+            self.saveXmlWin.refreshTree(selectedItems)
+        else:
+            self.saveXmlWin.refreshTree(self.currentBlurNode)
 
     def callOpenXml(self):
         self.toRestore = []
@@ -1674,6 +1726,7 @@ class BlurDeformDialog(Dialog):
         __main__.__dict__["blurDeformWindow"] = self
 
         blurdev.gui.loadUi(__file__, self)
+        self.progressBar.hide()
 
         for nameBtn in ["PoseBTN", "FrameBTN", "BlurNodeBTN"]:
             for nm in ["Add", "Delete"]:

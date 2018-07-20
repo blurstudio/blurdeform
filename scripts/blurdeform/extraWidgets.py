@@ -3,6 +3,7 @@ from maya import OpenMaya, OpenMayaMPx, OpenMayaUI, cmds, mel
 from Qt import QtWidgets, QtCore, QtGui
 import blurdev
 import sip
+import time, datetime
 
 
 # create a QtObject for not using  sip.wrapinstance too much
@@ -430,3 +431,93 @@ class WaitCursorCtxt(object):
         
         self.theTimePort.setParent (self)
 """
+
+
+"""
+from ilion_maya.gui_utils import lib as gui_utils
+import time
+nbValues = 100
+with gui_utils.MayaProgressBar(maxValue=nbValues,  status="test ...", frontWindow=True) as pBar:
+    for el in range (amountOfLoops):        
+        if not pBar.update() : break
+        time.sleep (.1)
+"""
+# maya progress bar
+class MayaProgressBar(object):
+    def __init__(
+        self, maxValue=100, status="Processing...", frontWindow=True, QTprogress=None
+    ):
+        self.maxValue = maxValue
+        self.status = status
+        self.frontWindow = frontWindow
+        self.startTime = time.time()
+        self.QTprogress = QTprogress
+
+    def __enter__(self):
+        self.progressBar = [mel.eval("$tmp = $gMainProgressBar")]
+        if self.frontWindow:
+            self.wind = cmds.window(title=self.status, resizeToFitChildren=True)
+            cmds.columnLayout()
+            self.progressBar.append(cmds.progressBar(w=300))
+            cmds.showWindow(self.wind)
+        else:
+            self.wind = None
+
+        progressStartKwargs = {
+            "e": True,
+            "isInterruptable": True,
+            "beginProgress": True,
+            "status": self.status,
+            "maxValue": self.maxValue,
+        }
+        for prg in self.progressBar:
+            cmds.progressBar(prg, **progressStartKwargs)
+            # Fix for hanging previous progress (force cancel it and restart)
+            if cmds.progressBar(prg, query=True, isCancelled=True):
+                cmds.progressBar(prg, e=1, endProgress=True)
+                cmds.progressBar(prg, **progressStartKwargs)
+
+        if self.QTprogress:
+            self.QTprogressHiddenState = self.QTprogress.isHidden()
+            if self.QTprogressHiddenState:
+                self.QTprogress.show()
+            self.QTprogress.setRange(0, self.maxValue)
+        self.index = 0
+        return self
+
+    def setStatus(self, s):
+        for prg in self.progressBar:
+            cmds.progressBar(prg, e=1, status=s)
+        if self.wind:
+            cmds.window(self.wind, e=True, title=s)
+
+    def update(self):
+        self.index += 1
+        if self.QTprogress:
+            self.QTprogress.setValue(self.index)
+        for prg in self.progressBar:
+            cmds.progressBar(prg, e=1, step=1)
+        if cmds.progressBar(self.progressBar[0], query=True, isCancelled=True):
+            # raise RuntimeError("Process interrupted.")
+            cmds.warning("Process interrupted!!")
+            return False
+        return True
+
+    def __exit__(self, type, value, traceback):
+        completionTime = time.time() - self.startTime
+        timeRes = str(datetime.timedelta(seconds=int(completionTime))).split(":")
+        result = "{0} hours {1} mins {2} secs".format(*timeRes)
+        print(
+            "{0} executed in {1} [{2:.2f} secs]".format(
+                self.status, result, completionTime
+            )
+        )
+        for prg in self.progressBar:
+            cmds.progressBar(prg, e=1, endProgress=True)
+        if self.wind:
+            cmds.deleteUI(self.wind)
+
+        if self.QTprogress:
+            self.QTprogress.setValue(0)
+            if self.QTprogressHiddenState:
+                self.QTprogress.hide()

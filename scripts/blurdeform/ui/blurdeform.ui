@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>585</width>
+    <width>607</width>
     <height>703</height>
    </rect>
   </property>
@@ -41,7 +41,7 @@
       <property name="maximumSize">
        <size>
         <width>16777215</width>
-        <height>150</height>
+        <height>16777215</height>
        </size>
       </property>
       <property name="title">
@@ -152,6 +152,13 @@
          </property>
          <property name="text">
           <string>O</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0" colspan="3">
+        <widget class="QProgressBar" name="progressBar">
+         <property name="value">
+          <number>24</number>
          </property>
         </widget>
        </item>
