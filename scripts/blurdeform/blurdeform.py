@@ -23,6 +23,14 @@ from xml.dom import minidom
 import xml.etree.ElementTree as ET
 import codecs, os
 
+
+def getIcon(iconNm):
+    fileVar = os.path.realpath(__file__)
+    uiFolder, filename = os.path.split(fileVar)
+    iconPth = os.path.join(uiFolder, "img", iconNm + ".png")
+    return QtGui.QIcon(iconPth)
+
+
 _icons = {
     "disconnect": Icons.getIcon("plug--minus"),
     "fromScene": Icons.getIcon("arrow-180"),
@@ -32,8 +40,8 @@ _icons = {
     "Add": Icons.getIcon("plus-button"),
     "Delete": Icons.getIcon("cross-button"),
     "empty": Icons.getIcon("border-down"),
-    "cancelEdit": Icons.getIcon(r"icons8\office\PNG\16\Editing\no_edit-16"),
-    "edit": Icons.getIcon(r"icons8\office\PNG\16\Very_Basic\edit-16"),
+    "cancelEdit": getIcon("cancelEdit"),
+    "edit": getIcon("edit"),
     "gear": Icons.getIcon(r"gear"),
     "backUp": Icons.getIcon("arrow-skip-270"),
     "restore": Icons.getIcon("arrow-transition-090--green"),
