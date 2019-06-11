@@ -1723,6 +1723,8 @@ class BlurDeformDialog(Dialog):
     def __init__(self, parent=None):
         super(BlurDeformDialog, self).__init__(parent)
 
+        mel.eval("makePaintable -attrType multiFloat -sm deformer blurSculpt weights")
+
         if cmds.optionVar(exists="blurScluptOffset"):
             self.offset = cmds.optionVar(q="blurScluptOffset")
         else:
