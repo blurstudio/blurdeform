@@ -88,19 +88,34 @@ class StoreXml(Dialog):
                             **dicVal
                         )
                     )
-                    mvtIndices = cmds.getAttr(
-                        "{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements".format(
-                            **dicVal
-                        ),
-                        mi=True,
+                    # mvtIndices =  cmds.getAttr ("{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements".format (**dicVal), mi=True)
+                    storedVectorsIndices = (
+                        cmds.getAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].storedVectors".format(
+                                **dicVal
+                            ),
+                            mi=True,
+                        )
+                        or []
                     )
+                    vectorMovementsIndices = []
+                    for ind in storedVectorsIndices:
+                        dicVal["geoIndex"] = ind
+                        vectorMovementsIndices = cmds.getAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].storedVectors[{geoIndex}].multiVectorMovements".format(
+                                **dicVal
+                            ),
+                            mi=True,
+                        )
+                        if vectorMovementsIndices:
+                            break
 
                     frameItem = QtWidgets.QTreeWidgetItem()
                     frameItem.setText(0, str(blurNode))
                     frameItem.setText(1, str(theParent))
                     frameItem.setText(2, str(thePose))
                     frameItem.setText(3, str(frame))
-                    if not mvtIndices:
+                    if not vectorMovementsIndices:
                         frameItem.setText(4, "\u00D8")
                         frameItem.setTextAlignment(4, QtCore.Qt.AlignCenter)
 
@@ -200,6 +215,17 @@ class StoreXml(Dialog):
             theBlurNode = self.parentWindow.currentBlurNode
         dicVal = {"blurNode": theBlurNode}
         print(theBlurNode)
+
+        # get an easy array to deal with indices ---------------------------------------
+        blurNodeMeshToIndex, geomSorted = self.blurInfo[theBlurNode]
+        fileIndexToMesh = self.blurFileInfo[geomSorted]
+
+        dicIndexFileToIndexNode = {}
+        for indexGeo, meshName in blurNodeMeshToIndex.iteritems():
+            indexFile = fileIndexToMesh[meshName]
+            dicIndexFileToIndexNode[indexFile] = indexGeo
+        print(dicIndexFileToIndexNode)
+        # --------------------------------------------------------------------------------
 
         pses = cmds.getAttr(theBlurNode + ".poses", mi=True)
         dicPoses = {}
@@ -320,27 +346,66 @@ class StoreXml(Dialog):
                             **dicVal
                         )
                     )
-                    mvtIndices = cmds.getAttr(frameName + ".vectorMovements", mi=True)
-                    if mvtIndices:
-                        mvtIndices = map(int, mvtIndices)
-                        for indVtx in mvtIndices:
+                    storedVectorsIndices = (
+                        cmds.getAttr(frameName + ".storedVectors", mi=True) or []
+                    )
+                    for (
+                        indexGeo
+                    ) in storedVectorsIndices:  # remove if it's in the copy list
+                        if (
+                            indexGeo in dicIndexFileToIndexNode.values()
+                        ):  # if something we'll edit we remove it
                             cmds.removeMultiInstance(
-                                frameName + ".vectorMovements[{0}]".format(indVtx),
+                                frameName + ".storedVectors[{}]".format(indexGeo),
                                 b=True,
                             )
+                    """
+                    mvtIndices =  cmds.getAttr (frameName+".vectorMovements", mi=True)
+                    if mvtIndices: 
+                        mvtIndices = map (int, mvtIndices )
+                        for indVtx in mvtIndices:
+                            cmds.removeMultiInstance(frameName+".vectorMovements[{0}]".format (indVtx), b=True)
+                    """
+                OLDvector_tag = frame_tag.find(
+                    "vectorMovements"
+                )  # frame_tag.getchildren ()[0]
+                if OLDvector_tag is not None:
+                    for vectag in OLDvector_tag.getchildren():
+                        index = int(vectag.get("index"))
+                        dicVal["vecInd"] = index
+                        value = vectag.get("value")
+                        floatVal = map(float, value[1:-1].split(", "))
+                        # cmds.setAttr ("{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements[{vecInd}]".format (**dicVal), *floatVal)
+                        # set to the index zero
+                        cmds.setAttr(
+                            "{blurNode}.poses[{indPose}].deformations[{frameInd}].storedVectors [0].multiVectorMovements[{vecInd}]".format(
+                                **dicVal
+                            ),
+                            *floatVal
+                        )
 
-                vector_tag = frame_tag.getchildren()[0]
-                for vectag in vector_tag.getchildren():
-                    index = int(vectag.get("index"))
-                    dicVal["vecInd"] = index
-                    value = vectag.get("value")
-                    floatVal = map(float, value[1:-1].split(", "))
-                    cmds.setAttr(
-                        "{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements[{vecInd}]".format(
-                            **dicVal
-                        ),
-                        *floatVal
-                    )
+                # now find the new tags -----------------------
+                storedVectors_tag = frame_tag.find(
+                    "storedVectors"
+                )  # frame_tag.getchildren ()[0]
+                if storedVectors_tag is not None:
+                    for vector_tag in storedVectors_tag.getchildren():
+                        indexGeo = vector_tag.get("indexGeo")
+                        blurNodeIndex = dicIndexFileToIndexNode[indexGeo]
+                        dicVal["indexGeo"] = blurNodeIndex
+                        for vectag in vector_tag.getchildren():
+                            index = int(vectag.get("index"))
+                            dicVal["vecInd"] = index
+                            value = vectag.get("value")
+                            floatVal = map(float, value[1:-1].split(", "))
+                            # cmds.setAttr ("{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements[{vecInd}]".format (**dicVal), *floatVal)
+                            # set to the index zero
+                            cmds.setAttr(
+                                "{blurNode}.poses[{indPose}].deformations[{frameInd}].storedVectors [{indexGeo}].multiVectorMovements[{vecInd}]".format(
+                                    **dicVal
+                                ),
+                                *floatVal
+                            )
 
     def doStoreXml(self):
         dicBlurPoses = {}
@@ -395,9 +460,23 @@ class StoreXml(Dialog):
             el.text(0) for el in self.parentWindow.uiBlurNodesTW.selectedItems()
         ]
         self.blurDic = {}
+        self.blurInfo = {}
+        self.blurFileInfo = {}
         for blurNode in selectedItems:
-            geom = self.parentWindow.getGeom(blurNode, transform=True)
-            self.blurDic[geom] = blurNode
+            # geom = self.parentWindow.getGeom (blurNode, transform = True)
+            geos, geoIndices = self.parentWindow.getGeom(blurNode, transform=True)
+            geom = " - ".join(geos)
+            geomSorted = " - ".join(sorted(geos))
+
+            indicesMeshes = sorted(zip(geos, geoIndices))
+            blurNodeMeshToIndex = {}
+            for ind, msh in indicesMeshes:
+                blurNodeMeshToIndex[msh] = ind
+            self.blurDic[geomSorted] = blurNode
+            self.blurInfo[blurNode] = (blurNodeMeshToIndex, geomSorted)
+
+            # self.blurDic [geos] = geos
+            # self.blurDic [geoIndices] = geoIndices
 
         with extraWidgets.WaitCursorCtxt():
             if os.path.isfile(self.sourceFile):
@@ -408,6 +487,7 @@ class StoreXml(Dialog):
     def refreshTreeFromRoot(self, root):
         chds = root.getchildren()
         geomsSelected = self.blurDic.keys()
+        # geomsSelected = [ " - ".join(sorted(geoStr.split(" - "))) for geoStr in self.blurDic.keys () ]
         itemsToSelect = []
         with extraWidgets.MayaProgressBar(
             maxValue=len(chds),
@@ -421,8 +501,26 @@ class StoreXml(Dialog):
 
                 self.progressBar.setValue(ind)
                 blurName = blurNode_tag.get("name")
+
+                # multi deal - with name --------------
                 geom = blurNode_tag.get("geom")
-                isGeomSelected = geom in geomsSelected
+                geomSplt = geom.split(" - ")
+                geomSorted = " - ".join(sorted(geomSplt))
+
+                if "geomIndices" in blurNode_tag.attrib:
+                    geomIndices = blurNode_tag.get("geomIndices")
+                    geoIndices = geomIndices.split(" - ")
+                else:
+                    geoIndices = ["0"]
+                indicesMeshes = sorted(zip(geomSplt, geoIndices))
+
+                blurNodeIndexToMesh = {}
+                for ind, msh in indicesMeshes:
+                    blurNodeIndexToMesh[ind] = msh
+                self.blurFileInfo[geomSorted] = blurNodeIndexToMesh
+                # multi deal - with name END --------------
+
+                isGeomSelected = geomSorted in geomsSelected
                 for pose_tag in blurNode_tag.getchildren():
                     poseName = pose_tag.get("poseName")
                     toAdd = []

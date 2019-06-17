@@ -88,7 +88,7 @@ class spinnerWidget(QtWidgets.QWidget):
         self.theQtObject.resize(wdth, self.height())
 
     def doConnectAttrSpinner(self, theAttr):
-        print(theAttr)
+        # print theAttr
         self.theAttr = theAttr
         if isinstance(self.theAttr, list):
             theAttr = self.theAttr[0]
@@ -247,7 +247,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
                 else:
                     cmds.undoInfo(undoName="moveSeveralKeys", openChunk=True)
                     self.updatePosition()
-                    self.doChangeTime()
+                    cmds.evalDeferred(self.doChangeTime)
                     cmds.undoInfo(undoName="moveSeveralKeys", closeChunk=True)
 
     def doChangeTime(self):
