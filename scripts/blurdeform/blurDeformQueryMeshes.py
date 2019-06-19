@@ -1,14 +1,11 @@
-from __future__ import print_function
 from blurdev.gui import Dialog
 from studio.gui.resource import Icons
-from Qt import QtCore
-import blurdev.debug
-
-
+from Qt import QtCore, QtGui, QtWidgets
 import blurdev
 
 from maya import cmds, mel
-import sip
+
+from functools import partial
 
 
 class blurDeformQueryMeshes(Dialog):
@@ -18,26 +15,52 @@ class blurDeformQueryMeshes(Dialog):
         self.listSelectedMeshes = []  # same as rejected
         super(blurDeformQueryMeshes, self).closeEvent(event)
 
-    """
-    def showEvent (self, event):
-        print "SHOWING"
-        super(blurDeformQueryMeshes, self).showEvent(event)
-    """
-
     def refreshWindow(self, lstMeshes, listToSelect):
+        nbVtxOrig = []
+        if self.addComboMeshes:
+            self.uiMeshesLW.setHeaderHidden(False)
+            self.uiMeshesLW.setColumnCount(2)
+            self.uiMeshesLW.setHeaderLabels(["selection", "deformedMeshes"])
+            nbVtxOrig = [cmds.polyEvaluate(el, v=True) for el in self.addComboMeshes]
+        else:
+            self.uiMeshesLW.setHeaderHidden(True)
+            self.uiMeshesLW.setColumnCount(1)
+
         # print lstMeshes, listToSelect
         self.listSelectedMeshes = []
         self.uiMeshesLW.clear()
         for ind, nm in enumerate(lstMeshes):
-            self.uiMeshesLW.addItem(nm)
-            item = self.uiMeshesLW.item(ind)
-            if nm in listToSelect:
+            item = QtWidgets.QTreeWidgetItem()
+            item.setText(0, nm)
+            item.setFlags(
+                item.flags() | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsUserCheckable
+            )
+            self.uiMeshesLW.addTopLevelItem(item)
+
+            if self.addComboMeshes:
+                cb = QtWidgets.QComboBox(self)
+                cb.addItems(self.addComboMeshes)
+                self.uiMeshesLW.setItemWidget(item, 1, cb)
+
+                nbVtx = cmds.polyEvaluate(nm, v=True)
+                if nbVtx in nbVtxOrig:
+                    ind = nbVtxOrig.index(nbVtx)
+                    cb.setCurrentIndex(ind)
+                    item.setSelected(True)
+
+            elif nm in listToSelect:
                 item.setSelected(True)
 
     def accept(self):
-        self.listSelectedMeshes = [
-            item.text() for item in self.uiMeshesLW.selectedItems()
-        ]
+        if self.addComboMeshes:
+            self.listSelectedMeshes = [
+                (item.text(0), self.uiMeshesLW.itemWidget(item, 1).currentText())
+                for item in self.uiMeshesLW.selectedItems()
+            ]
+        else:
+            self.listSelectedMeshes = [
+                item.text(0) for item in self.uiMeshesLW.selectedItems()
+            ]
         # print "ACCEPTED"
         super(blurDeformQueryMeshes, self).accept()
 
@@ -48,7 +71,6 @@ class blurDeformQueryMeshes(Dialog):
 
     # ------------------- INIT ----------------------------------------------------
     def __init__(self, parent=None):
-        print("INIT")
         super(blurDeformQueryMeshes, self).__init__(parent)
         # load the ui
         import __main__
@@ -59,5 +81,5 @@ class blurDeformQueryMeshes(Dialog):
         self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Pick meshes to Add")
         # self.setModal (True)
-
-        self.refreshWindow(*self.parentWindow.argsQueryMeshes)
+        lstMeshes, listToSelect, self.addComboMeshes = self.parentWindow.argsQueryMeshes
+        self.refreshWindow(lstMeshes, listToSelect)

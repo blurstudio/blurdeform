@@ -199,7 +199,11 @@ class BlurDeformDialog(Dialog):
         isMultiGeos = len(self.currentGeometries) > 1
         indicesToCopy = []
         if isMultiGeos:
-            self.argsQueryMeshes = (self.currentGeometries, self.currentGeometries)
+            self.argsQueryMeshes = (
+                self.currentGeometries,
+                self.currentGeometries,
+                None,
+            )
             blurdev.launch(
                 blurDeformQueryMeshes.blurDeformQueryMeshes, instance=True, modal=True
             )
@@ -417,7 +421,7 @@ class BlurDeformDialog(Dialog):
             # newBlurSculpt = cmds.blurSculpt()
             newBlurSculpt = cmds.deformer(type="blurSculpt")
 
-            self.currentBlurNode = newBlurSculpt
+            (self.currentBlurNode,) = newBlurSculpt
             self.currentGeometries, self.currentGeometriesIndices = self.getGeom(
                 self.currentBlurNode, transform=True
             )
@@ -425,6 +429,8 @@ class BlurDeformDialog(Dialog):
 
             self.currentPose = ""
             self.refresh()
+            # QtCore.QTimer.singleShot (1005, partial (self.doSelectBlurNode ,newBlurSculpt )   )
+            # cmds.evalDeferred (partial (self.doSelectBlurNode ,newBlurSculpt))
 
     def addMeshToDeformer(self):
         sel = cmds.ls(sl=True, tr=True)
@@ -582,7 +588,11 @@ class BlurDeformDialog(Dialog):
                     set(objsWithAttributes) - set(listResForDuplicate)
                 )
                 if len(listResForDuplicate) != len(objsWithAttributes):
-                    self.argsQueryMeshes = (listResForDuplicate, objsWithAttributes)
+                    self.argsQueryMeshes = (
+                        listResForDuplicate,
+                        objsWithAttributes,
+                        None,
+                    )
                     blurdev.launch(
                         blurDeformQueryMeshes.blurDeformQueryMeshes,
                         instance=True,
@@ -602,11 +612,23 @@ class BlurDeformDialog(Dialog):
                         self.doAddNewFrame(self.currentBlurNode, lastGeo, selection[0])
                         toHide.append(selection[0])
                         added = True
-                if not added:
-                    cmds.confirmDialog(
-                        m="this is a multi deformer, select modeled mesh and deformer mesh\nFailed"
+                if not added:  # popup window
+                    # cmds.confirmDialog (m="this is a multi deformer, select modeled mesh and deformer mesh 1 by 1 \nFailed")
+                    self.argsQueryMeshes = (
+                        selection,
+                        selection,
+                        self.currentGeometries,
                     )
-                    return
+                    blurdev.launch(
+                        blurDeformQueryMeshes.blurDeformQueryMeshes,
+                        instance=True,
+                        modal=True,
+                    )
+                    selectedMeshes = self.blurDeformQueryMeshesWin.listSelectedMeshes
+                    for (geo, sourceMesh) in selectedMeshes:
+                        self.doAddNewFrame(self.currentBlurNode, sourceMesh, geo)
+                        toHide.append(geo)
+                    objsToAdd = []
             else:  # solo geo to Add, fairly StraighbtForward right ?
                 if len(selection) == 2:
                     lastGeo = selection[1]
@@ -1235,6 +1257,18 @@ class BlurDeformDialog(Dialog):
         """
         return ""
 
+    def doSelectBlurNode(self, theBlurNode):
+        print(" doSelectBlurNode [{}]".format(theBlurNode))
+        blurNodes = [
+            self.uiBlurNodesTW.topLevelItem(ind).text(0)
+            for ind in range(self.uiBlurNodesTW.topLevelItemCount())
+        ]
+        if theBlurNode in blurNodes:
+            ind = blurNodes.index(theBlurNode)
+            item = self.uiBlurNodesTW.topLevelItem(ind)
+            self.uiBlurNodesTW.setCurrentItem(item)
+            self.changedSelection(item, 0)
+
     def selectFromScene(self):
         currentSel = cmds.ls(sl=True)
         if len(currentSel) == 1:
@@ -1246,17 +1280,7 @@ class BlurDeformDialog(Dialog):
                 blurSculpts = cmds.ls(hist, type="blurSculpt")
 
             if hist and blurSculpts:
-                # blurNodes = cmds.ls (type = 'blurSculpt')
-                blurNodes = [
-                    self.uiBlurNodesTW.topLevelItem(ind).text(0)
-                    for ind in range(self.uiBlurNodesTW.topLevelItemCount())
-                ]
-                ind = blurNodes.index(blurSculpts[0])
-                item = self.uiBlurNodesTW.topLevelItem(ind)
-                self.uiBlurNodesTW.setCurrentItem(item)
-                self.changedSelection(item, 0)
-                # index = self.uiBlurNodesTW.model().index(ind, 0)
-                # self.uiBlurNodesTW.selectionModel().setCurrentIndex (index, QtWidgets.QItemSelectionModel.selectedRows)
+                self.doSelectBlurNode(blurSculpts[0])
             else:
                 ind = -1
                 self.uiBlurNodesTW.selectionModel().clearSelection()
@@ -1275,7 +1299,13 @@ class BlurDeformDialog(Dialog):
         self.resForDuplicate = []
         geoAndIndex = zip(self.currentGeometries, self.currentGeometriesIndices)
         for geo, geoIndex in geoAndIndex:
-            dup = cmds.duplicate(geo, name="EDIT_" + geo)[0]
+            nameSpaceSplit = geo.split(":")
+            """
+            nameSpaceSplit[-1] =  "EDIT_"+nameSpaceSplit[-1] 
+            dupName = ":".join(nameSpaceSplit)
+            """
+            dupName = "EDIT_" + nameSpaceSplit[-1]
+            dup = cmds.duplicate(geo, name=dupName)[0]
             cmds.addAttr(dup, longName="blurSculptNode", dataType="string")
             cmds.setAttr(dup + ".blurSculptNode", edit=True, keyable=True)
             cmds.setAttr(dup + ".blurSculptNode", self.currentBlurNode, type="string")
@@ -2124,8 +2154,8 @@ class BlurDeformDialog(Dialog):
             geomlongSplitted = geom.split("|")[-1]
             split = geomlongSplitted.split("_")
             blurNode = split[0]
-            frame = split[-2]
-            poseName = "_".join(split[1:-2])
+            frame = split[2]
+            poseName = split[1]  # "_".join (split[1:-2])
             frame = float(frame[1:])
             print(blurNode, frame, poseName)
 
@@ -2196,7 +2226,7 @@ class BlurDeformDialog(Dialog):
                 prevIndices = []
             # add the pose
             cmds.blurSculpt(
-                self.currentGeom, addAtTime=geom, poseName=poseName, offset=self.offset
+                geos[0], addAtTime=geom, poseName=poseName, offset=self.offset
             )
 
             postIndices = cmds.getAttr(
