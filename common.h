@@ -17,6 +17,7 @@
 #include <maya/MPointArray.h>
 #include <maya/MString.h>
 
+#include <maya/MItMeshPolygon.h>
 #include <maya/MItMeshVertex.h>
 #include <maya/MfnMesh.h>
 #include <set>
@@ -32,6 +33,28 @@ MVector getVertexTangent(
 );
 MVector getVertexTangentFromFace(
     MFnMesh &fnInputMesh, MIntArray &connectedFaces, int theVertexNumber
+);
+
+void getSmoothedVector(
+    int indVtx, MIntArray &smoothVectorFound, MFloatVectorArray &Vectors,
+    MFloatVectorArray &smoothedVectors, std::vector<int> &connectedVerticesFlat,
+    std::vector<int> &connectedVerticesIndicesFlat
+);
+
+void getVertsNormalsTangents(
+    MObject &oInputGeom, MFnMesh &fnInputMesh,
+    std::vector<int> &normalVerticesFlat,
+    std::vector<int> &normalVerticesIndicesFlat,
+    std::vector<int> &tangentVerticesFlat,
+    std::vector<int> &tangentVerticesIndicesFlat
+);
+
+MStatus getTheNormalsAndTangents(
+    MFnMesh &fnInputMesh, std::vector<int> &normalVerticesFlat,
+    std::vector<int> &normalVerticesIndicesFlat,
+    std::vector<int> &tangentVerticesFlat,
+    std::vector<int> &tangentVerticesIndicesFlat, MFloatVectorArray &normals,
+    MFloatVectorArray &tangents
 );
 
 // get a free index of a channel
@@ -161,7 +184,7 @@ void CalculateSampleWeights(
   @param[out] matrix Generated matrix.
 */
 void CreateMatrix(
-    const MPoint &origin, const MVector &normal, const MVector &up,
+    const MPoint &origin, const MFloatVector &normal, const MFloatVector &up,
     MMatrix &matrix
 );
 

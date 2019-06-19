@@ -168,10 +168,14 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
         status = GetLatestBlurSculptNode();
         MFnDependencyNode fnBlurSculptNode(oBlurSculptNode_);
 
-        // MGlobal::displayInfo(MString("Adding : [") + targetMeshAdd_ +
-        // MString("] to mesh [")+ fnMeshDriven.partialPathName() +
-        // MString("]")); MGlobal::displayInfo(MString("       fnBlurSculptNode
-        // : [") + fnBlurSculptNode.name() + MString("]"));
+        MGlobal::displayInfo(
+            MString("Adding : [") + targetMeshAdd_ + MString("] to mesh [") +
+            fnMeshDriven.partialPathName() + MString("]")
+        );
+        MGlobal::displayInfo(
+            MString("       fnBlurSculptNode : ") + fnBlurSculptNode.name() +
+            MString("[") + indexInDeformer + MString("]")
+        );
         addAFrame();
     }
     else if (command_ == kCommandQuery) {
@@ -258,6 +262,13 @@ MStatus blurSculptCmd::GatherCommandArguments(const MArgList &args)
         selListA.clear();
         connectTransform_ = true;
     }
+
+    if (argData.isFlagSet(kOffsetFlagShort)) {
+        MString OffsetStr =
+            argData.flagArgumentString(kOffsetFlagShort, 0, &status);
+        aOffset_ = OffsetStr.asFloat();
+    }
+
     if (argData.isFlagSet(kAddPoseNameFlagShort)) {
         command_ = kCommandAddPose;
         return MS::kSuccess;
@@ -382,32 +393,33 @@ MStatus blurSculptCmd::GetLatestBlurSculptNode()
         CHECK_MSTATUS_AND_RETURN_IT(status);
         if (fnNode.typeId() == blurSculpt::id) {
             oBlurSculptNode_ = oDeformerNode;
+            MPlug thisPlug = itDG.thisPlug();
+            indexInDeformer = thisPlug.logicalIndex();
             return MS::kSuccess;
         }
     }
     return MS::kFailure;
 }
-
-MStatus
-blurSculptCmd::GetPreDeformedMesh(MObject &blurSculptNode, MDagPath &pathMesh)
-{
-    MStatus status;
-    /*
-    // Get the bind mesh connected to the message attribute of the wrap deformer
-    MPlug plugBindMesh(oWrapNode, blurSculpt::aBindDriverGeo);
-    MPlugArray plugs;
-    plugBindMesh.connectedTo(plugs, true, false, &status);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
-    if (plugs.length() == 0) {
-            MGlobal::displayError("Unable to rebind.  No bind mesh is
-    connected."); return MS::kFailure;
-    }
-    MObject oBindMesh = plugs[0].node();
-    status = MDagPath::getAPathTo(oBindMesh, pathBindMesh);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
-    */
-    return MS::kSuccess;
+/*
+MStatus blurSculptCmd::GetPreDeformedMesh(MObject& blurSculptNode, MDagPath&
+pathMesh) { MStatus status;
+        /*
+        // Get the bind mesh connected to the message attribute of the wrap
+deformer MPlug plugBindMesh(oWrapNode, blurSculpt::aBindDriverGeo); MPlugArray
+plugs; plugBindMesh.connectedTo(plugs, true, false, &status);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+        if (plugs.length() == 0) {
+                MGlobal::displayError("Unable to rebind.  No bind mesh is
+connected."); return MS::kFailure;
+        }
+        MObject oBindMesh = plugs[0].node();
+        status = MDagPath::getAPathTo(oBindMesh, pathBindMesh);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+        */
+/*
+        return MS::kSuccess;
 }
+*/
 
 MStatus blurSculptCmd::getListPoses()
 {
@@ -680,10 +692,8 @@ MStatus blurSculptCmd::addAFrame()
     // get the current time
     MTime currentFrame = MAnimControl::currentTime();
     float currentFrameF = float(currentFrame.value());
-    // MGlobal::displayInfo(MString("currentFrame : ") + currentFrameF);
-    //  get the name of the pose
-    // MGlobal::displayInfo(MString("poseName : ") + poseName_);
-    // MGlobal::displayInfo(MString("offset value : ") + aOffset_);
+
+    MGlobal::displayInfo(MString("offset value : ") + aOffset_);
 
     // get the mode of deformation
     /*
@@ -753,7 +763,18 @@ MStatus blurSculptCmd::addAFrame()
     MPlug theFramePlug = deformPlug.child(blurSculpt::frame);
     theFramePlug.setValue(currentFrameF);
 
-    MPlug theVectorsPlug = deformPlug.child(blurSculpt::vectorMovements);
+    // MPlug theVectorsPlug = deformPlug.child(blurSculpt::vectorMovements);
+    MPlug storedVectorsPlug = deformPlug.child(blurSculpt::storedVectors);
+    MPlug storedVectorsPlugIndex =
+        storedVectorsPlug.elementByLogicalIndex(indexInDeformer, &status);
+    MPlug theVectorsPlug =
+        storedVectorsPlugIndex.child(blurSculpt::multiVectorMovements);
+
+    /*
+    if (status != MStatus::kSuccess) {
+            // create it
+    }
+    */
     // get the points from the meshes
     MPointArray deformedMeshVerticesPos;
     // first set the gain at 0
@@ -771,70 +792,91 @@ MStatus blurSculptCmd::addAFrame()
     MPoint offsetPoint;
     MMatrix mMatrix;
 
-    // if the channel is full first empty it
-    /*
-    //in python easier
-    indices = cmds.getAttr (BSN+".poses[0].deformations[1].vectorMovements",
-    mi=True) for ind in indices :
-    cmds.removeMultiInstance(BSN+".poses[0].deformations[1].vectorMovements[{0}]".format(ind),
-    b=True) if (emptyFrameChannel) { MGlobal::displayInfo (MString("-->DO empty
-    channel<--") );
-
-            int existingElem = vertexFaceIndicesPlug.numElements();
-            for (int indElem = 0; indElem< existingElem; indElem++) {
-                    MGlobal::displayInfo(MString("    vtx : ") + indElem);
-                    MPlug oldVectorsPlugElement =
-    vertexFaceIndicesPlug.elementByPhysicalIndex(indElem); MFnNumericData
-    fnNumericData; MObject vectorValues =
-    fnNumericData.create(MFnNumericData::k3Float, &status);
-
-                    //MGlobal::displayInfo (MString("setting ") +
-    offsetPoint.x); fnNumericData.setData3Float(0,0,0); status =
-    dgMod.newPlugValue(oldVectorsPlugElement, vectorValues);
-            }
-            dgMod.doIt();
-
-    }
-
-    */
     MPlug facePlug, vertexPlug, vertexTrianglePlug, triangleValuesPlug;
     MVector normal, tangent, binormal, cross;
     MPoint DFV, TV;
 
-    MFloatVectorArray normals;
-    MVectorArray tangents(nbDeformedVtx), smoothTangents(nbDeformedVtx);
-    MIntArray tangentFound(nbDeformedVtx, -1); // init at -1
+    //// HERE THE NORMALS !!!
+    MFloatVectorArray normals(nbDeformedVtx), tangents(nbDeformedVtx);
+    MFloatVectorArray smoothTangents(nbDeformedVtx),
+        smoothedNormals(nbDeformedVtx);
+    MIntArray smoothTangentFound(nbDeformedVtx, -1),
+        smoothNormalFound(nbDeformedVtx, -1); // init at -1
 
-    MVectorArray smoothedNormals(nbDeformedVtx);
-    fnDeformedMesh.getVertexNormals(false, normals, MSpace::kWorld);
-
-    // smooth the normals
-    MItMeshVertex vertexIter(meshDeformed_);
-    // MIntArray surroundingVertices;
+    // fnDeformedMesh.getVertexNormals(false, normals, MSpace::kWorld);
+    std::vector<int> connectedVerticesFlat; // a flat array of all vertices
+    std::vector<int>
+        connectedVerticesIndicesFlat; // the indices of where to start in array
+                                      // smooth the normals
     MPlug smoothNormalsPlug =
         blurSculptDepNode.findPlug(blurSculpt::smoothNormals);
-    bool useSmoothNormals = smoothNormalsPlug.asBool();
+    // bool useSmoothNormals = smoothNormalsPlug.asBool();
+    int smoothNormalsRepeat = smoothNormalsPlug.asInt();
 
-    std::vector<MIntArray> perFaceConnectedVertices;
-    perFaceConnectedVertices.resize(nbDeformedVtx);
-    if (useSmoothNormals) {
+    if (deformationType != 0) { // tangent and normals
+        connectedVerticesIndicesFlat.resize(nbDeformedVtx + 1);
+        MItMeshVertex vertexIter(meshDeformed_);
+        int sumConnectedVertices = 0;
+        int sumConnectedFaces = 0;
         for (int vtxTmp = 0; !vertexIter.isDone();
              vertexIter.next(), ++vtxTmp) {
-            MIntArray surroundingVertices;
+            MIntArray surroundingVertices, surroundingFaces;
+            int vtxIndex = vertexIter.index();
+
             vertexIter.getConnectedVertices(surroundingVertices);
-            perFaceConnectedVertices[vtxTmp] = surroundingVertices;
-            int nbSurrounding = surroundingVertices.length();
-            // float mult = 1. / (nbSurrounding+1);
-            MVector sumNormal = MVector(normals[vtxTmp]);
-            for (int k = 0; k < nbSurrounding; ++k) {
-                int vtxAround = surroundingVertices[k];
-                sumNormal += MVector(normals[vtxAround]);
+            vertexIter.getConnectedFaces(surroundingFaces);
+
+            // we try to store in a flat array maybe better access
+            // ------------------
+            int nbConnVerts = surroundingVertices.length();
+            connectedVerticesIndicesFlat[vtxIndex] = sumConnectedVertices;
+            for (int k = 0; k < nbConnVerts; ++k)
+                connectedVerticesFlat.push_back(surroundingVertices[k]);
+            sumConnectedVertices += nbConnVerts;
+        }
+        /*
+        // now normals IDS -------------------
+        std::vector<int> normalVerticesFlat;// a flat array of all vertices
+        std::vector<int> normalVerticesIndicesFlat;// the indices of where to
+        start in array std::vector<int> tangentVerticesFlat;// a flat array of
+        all vertices std::vector<int> tangentVerticesIndicesFlat;// the indices
+        of where to start in array getVertsNormalsTangents(meshDeformed_.node(),
+        fnDeformedMesh, normalVerticesFlat, normalVerticesIndicesFlat,
+        tangentVerticesFlat, tangentVerticesIndicesFlat);
+        getTheNormalsAndTangents(fnDeformedMesh,
+                normalVerticesFlat, normalVerticesIndicesFlat,
+                tangentVerticesFlat, tangentVerticesIndicesFlat,
+                normals, tangents);
+        */
+        fnDeformedMesh.getVertexNormals(false, normals, MSpace::kWorld);
+
+        // MItMeshVertex vertexIter(meshDeformed_);
+        for (int theVertexNumber = 0; theVertexNumber < nbDeformedVtx;
+             ++theVertexNumber) {
+            MVector tangent =
+                getVertexTangent(fnDeformedMesh, vertexIter, theVertexNumber);
+            tangents.set(tangent, theVertexNumber);
+        }
+
+        for (int it = 0; it < smoothNormalsRepeat; ++it) {
+            for (int theVertexNumber = 0; theVertexNumber < nbDeformedVtx;
+                 ++theVertexNumber) {
+                getSmoothedVector(
+                    theVertexNumber, smoothNormalFound, normals,
+                    smoothedNormals, connectedVerticesFlat,
+                    connectedVerticesIndicesFlat
+                );
+                smoothNormalFound[theVertexNumber] = -1;
+                // getSmoothedVector(theVertexNumber, smoothTangentFound,
+                // tangents, smoothTangents, connectedVerticesFlat,
+                // connectedVerticesIndicesFlat);
+                // smoothTangentFound[theVertexNumber] = -1;
             }
-            // sumNormal = .5*sumNormal + .5*normals[vtxTmp];
-            sumNormal.normalize();
-            smoothedNormals.set(sumNormal, vtxTmp);
+            normals = smoothedNormals;
+            // tangents = smoothTangents;
         }
     }
+
     // Store vectors values
     MPoint zeroPt(0, 0, 0);
     for (int indVtx = 0; indVtx < nbTargetVtx; indVtx++) {
@@ -847,40 +889,24 @@ MStatus blurSculptCmd::addAFrame()
                 // offsetPoint = offsetPoint  * matrixValueInverse + matPoint;
             }
             else {
-                if (tangentFound[indVtx] == -1) {
-                    tangents.set(
-                        getVertexTangent(fnDeformedMesh, vertexIter, indVtx),
-                        indVtx
-                    );
-                    tangentFound[indVtx] = 1;
-                }
-                tangent = tangents[indVtx];
+                /*
                 if (useSmoothNormals) {
-                    MIntArray surroundingVertices =
-                        perFaceConnectedVertices[indVtx];
-                    int nbSurrounding = surroundingVertices.length();
-                    for (int k = 0; k < nbSurrounding; ++k) {
-                        int vtxAround = surroundingVertices[k];
-                        if (tangentFound[vtxAround] == -1) {
-                            tangents.set(
-                                getVertexTangent(
-                                    fnDeformedMesh, vertexIter, vtxAround
-                                ),
-                                vtxAround
-                            );
-                            tangentFound[vtxAround] = 1;
-                        }
-                        tangent += tangents[vtxAround];
-                    }
-                }
-                // fnDeformedMesh.getVertexNormal(indVtx, false, normal);
-                if (useSmoothNormals) {
-                    normal = smoothedNormals[indVtx];
-                }
-                else {
-                    normal = normals[indVtx];
+                        getSmoothedVector(indVtx, smoothNormalFound, normals,
+                smoothedNormals, connectedVerticesFlat,
+                connectedVerticesIndicesFlat); normal = smoothedNormals[indVtx];
+                        //getSmoothedVector(indVtx, smoothTangentFound,
+                tangents, smoothTangents, connectedVerticesFlat,
+                connectedVerticesIndicesFlat);
+                        //tangent = smoothTangents[indVtx];
+                        tangent = tangents[indVtx];
+                }else{
+                        normal  = normals[indVtx];
+                        tangent = tangents[indVtx];
                 }
                 tangent.normalize();
+                */
+                normal = normals[indVtx];
+                tangent = tangents[indVtx];
                 CreateMatrix(zeroPt, normal, tangent, mMatrix);
                 offsetPoint = (TV - DFV) * mMatrix.inverse();
             }
@@ -893,6 +919,7 @@ MStatus blurSculptCmd::addAFrame()
                 float(offsetPoint.x), float(offsetPoint.y), float(offsetPoint.z)
             );
             CHECK_MSTATUS_AND_RETURN_IT(status);
+
             MPlug VectorsPlugElement =
                 theVectorsPlug.elementByLogicalIndex(indVtx, &status);
             CHECK_MSTATUS_AND_RETURN_IT(status);

@@ -103,7 +103,7 @@ class blurSculptCmd : public MPxCommand {
 
     MStatus GetLatestBlurSculptNode();
     // MStatus setFaceVertexRelationShip();
-    MStatus GetPreDeformedMesh(MObject &blurSculptNode, MDagPath &pathMesh);
+    // MStatus GetPreDeformedMesh(MObject& blurSculptNode, MDagPath& pathMesh);
 
     MStatus addAPose();                   // adding a pose
     MStatus addAFrame();                  // adding a pose
@@ -122,6 +122,7 @@ class blurSculptCmd : public MPxCommand {
     MDGModifier dgMod_;   // the execute of mel
 
     MDagPath meshDeformed_; /**< Paths to the shape deformed */
+    int indexInDeformer;    // index of the mesh in the deformer
     MDagPath meshTarget_;   /**< Paths to the target mesh*/
     MObject poseTransform_;
 

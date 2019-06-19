@@ -17,6 +17,211 @@ from chad vernon
 
 #define NORMALIZATION_INDEX -1
 
+void getVertsNormalsTangents(
+    MObject &oInputGeom, MFnMesh &fnInputMesh,
+    std::vector<int> &normalVerticesFlat,
+    std::vector<int> &normalVerticesNBFlat,
+    std::vector<int> &tangentVerticesFlat,
+    std::vector<int> &tangentVerticesNBFlat
+)
+{
+    // the normals
+    int numFaces = fnInputMesh.numPolygons();
+    int nbVertices = fnInputMesh.numVertices();
+
+    std::vector<std::vector<int>>
+        normalsVertsIds; // vector of faces Ids normals
+    normalsVertsIds.resize(nbVertices);
+    std::vector<std::vector<int>>
+        tangentsVertsIds; // vector of faces Ids normals
+    tangentsVertsIds.resize(nbVertices);
+
+    // get the Data
+    MIntArray normalFaceIdCounts, normalsFaceId;
+    fnInputMesh.getNormalIds(normalFaceIdCounts, normalsFaceId);
+
+    // get connections from polygons -------------------------
+    MItMeshPolygon polyIter(oInputGeom);
+    std::vector<MIntArray>
+        FaceToVertices; // use by MItMeshVertex getConnectedVertices
+
+    FaceToVertices.resize(numFaces);
+    int globalIndexInArrayNormals = 0; // start at zero
+    for (int faceTmp = 0; !polyIter.isDone(); polyIter.next(), ++faceTmp) {
+        MIntArray surroundingVertices;
+        polyIter.getVertices(surroundingVertices);
+        int indFace = polyIter.index();
+
+        // CAN BE REMOVED I HOPE ! it is just a test
+        int nbNormalsInFace = normalFaceIdCounts[faceTmp];
+        if (nbNormalsInFace != surroundingVertices.length()) {
+            MGlobal::displayInfo(
+                MString("not matching nb verts per face [") +
+                surroundingVertices.length() + MString("] in face [") +
+                indFace + MString("] ;")
+            );
+        }
+        // end of test ----
+        for (int k = 0; k < surroundingVertices.length(); ++k) {
+            int indVtx = surroundingVertices[k];
+            int indNormal = normalsFaceId[globalIndexInArrayNormals];
+            normalsVertsIds[indVtx].push_back(indNormal);
+            globalIndexInArrayNormals++;
+
+            int indTangent = fnInputMesh.getTangentId(indFace, indVtx); // not k
+            tangentsVertsIds[indVtx].push_back(indTangent);
+        }
+    }
+    // now flatten normals for faster access ----------------------------
+    normalVerticesNBFlat.resize(nbVertices);
+    int sumNormalVertices = 0;
+
+    for (int indVtx = 0; indVtx < nbVertices; indVtx++) {
+        std::vector<int> normalsIds = normalsVertsIds[indVtx];
+        for (int normalId : normalsIds)
+            normalVerticesFlat.push_back(normalId);
+        normalVerticesNBFlat[indVtx] = normalsIds.size();
+        ;
+    }
+
+    // now flatten tangents for faster access ----------------------------
+    tangentVerticesNBFlat.resize(nbVertices);
+    int sumTangentVertices = 0;
+
+    for (int indVtx = 0; indVtx < nbVertices; indVtx++) {
+        std::vector<int> tangentsIds = tangentsVertsIds[indVtx];
+        for (int tangentId : tangentsIds)
+            tangentVerticesFlat.push_back(tangentId);
+        tangentVerticesNBFlat[indVtx] = tangentsIds.size();
+    }
+}
+
+MStatus getTheNormalsAndTangents(
+    MFnMesh &fnInputMesh, std::vector<int> &normalVerticesFlat,
+    std::vector<int> &normalVerticesNBFlat,
+    std::vector<int> &tangentVerticesFlat,
+    std::vector<int> &tangentVerticesNBFlat, MFloatVectorArray &normals,
+    MFloatVectorArray &tangents
+)
+{
+
+    MStatus returnStatus;
+    const float *rawNormals = fnInputMesh.getRawNormals(&returnStatus);
+    MFloatVectorArray rawTangents;
+    MStatus gettingTangentsStat = fnInputMesh.getTangents(rawTangents);
+    if (gettingTangentsStat != MStatus::kSuccess)
+        return gettingTangentsStat;
+
+    int nbVertices = fnInputMesh.numVertices();
+    // normals.setLength();
+    // tangents.setLength(nbVertices);
+
+    int globalNormalIndex = 0;
+    int globalTangentIndex = 0;
+    for (unsigned int vertexInd = 0; vertexInd < nbVertices; vertexInd++) {
+        MFloatVector sumNormals;
+        bool firstNormal = true;
+
+        int nbNormals = normalVerticesNBFlat[vertexInd];
+        for (int k = 0; k < nbNormals; ++k) {
+            int indNormal = normalVerticesFlat[globalNormalIndex];
+            globalNormalIndex++;
+
+            MFloatVector theNormal(
+                rawNormals[indNormal * 3], rawNormals[indNormal * 3 + 1],
+                rawNormals[indNormal * 3 + 2]
+            );
+            if (firstNormal) {
+                sumNormals = theNormal;
+                firstNormal = false;
+            }
+            else
+                sumNormals += theNormal;
+        }
+        /*
+        //std::vector <int>normalsIds = normalsVertsIds[vertexInd];
+        for (int indNormal: normalsIds) {
+                MFloatVector theNormal(rawNormals[indNormal * 3],
+        rawNormals[indNormal * 3 + 1], rawNormals[indNormal * 3 + 2]); if
+        (firstNormal) { sumNormals = theNormal; firstNormal = false; }else
+                        sumNormals += theNormal;
+        }
+        */
+        sumNormals.normalize();
+        normals.set(sumNormals, vertexInd);
+
+        // now tangents -------------------
+        MFloatVector sumTangents;
+        bool firstTangent = true;
+        int nbTangents = tangentVerticesNBFlat[vertexInd];
+        for (int k = 0; k < nbTangents; ++k) {
+            int indTangent = tangentVerticesFlat[globalTangentIndex];
+            globalTangentIndex++;
+
+            MFloatVector theTangent = rawTangents[indTangent];
+            if (firstNormal) {
+                sumNormals = theTangent;
+                firstNormal = false;
+                break;
+            }
+            else
+                sumNormals += theTangent;
+        }
+
+        /*
+        std::vector <int>tangentsIds = tangentsVertsIds[vertexInd];
+        for (int indTangent : tangentsIds) {
+                MFloatVector theTangent = rawTangents[indTangent];//
+        (rawTangents[indTangent * 3], rawTangents[indTangent * 3 + 1],
+        rawTangents[indTangent * 3 + 2]); if (firstTangent) { sumTangents =
+        theTangent; firstTangent = false;
+                }
+                else
+                        sumTangents += theTangent;
+        }
+        */
+        sumTangents.normalize();
+        tangents.set(sumTangents, vertexInd);
+    }
+    return returnStatus;
+}
+
+void getSmoothedVector(
+    int indVtx, MIntArray &smoothVectorFound, MFloatVectorArray &Vectors,
+    MFloatVectorArray &smoothedVectors, std::vector<int> &connectedVerticesFlat,
+    std::vector<int> &connectedVerticesIndicesFlat
+)
+{
+    /*
+    auto myPair = connectedVerticesMultiFlat[geoIndex];
+    std::vector<int> connectedVerticesFlat = myPair.first;
+    std::vector<int> connectedVerticesIndicesFlat = myPair.second;
+    */
+
+    MFloatVector sumVector;
+    //= Vectors[indVtx];
+
+    int startIndx = connectedVerticesIndicesFlat[indVtx];
+    int endIndx = connectedVerticesIndicesFlat[indVtx + 1];
+    for (int k = startIndx; k < endIndx; ++k) {
+
+        int vtxAround = connectedVerticesFlat[k];
+        if (k == 0) {
+            sumVector = Vectors[vtxAround];
+        }
+        else {
+            sumVector += Vectors[vtxAround];
+        }
+    }
+    // finish --------------
+    sumVector.normalize();
+    sumVector += Vectors[indVtx];
+    sumVector = .5 * sumVector;
+
+    smoothVectorFound.set(1, indVtx);
+    smoothedVectors.set(sumVector, indVtx);
+}
+
 MVector
 getVertexTangent(MFnMesh &fnInputMesh, MItMeshVertex &meshVertIt, int indVtx)
 {
@@ -33,7 +238,6 @@ MVector getVertexTangentFromFace(
 )
 {
     MVector tangent;
-    int oldInd;
     MVector theTangent;
     for (unsigned int i = 0; i < connectedFaces.length(); i += 3) {
         int theFace = connectedFaces[i];
@@ -42,6 +246,7 @@ MVector getVertexTangentFromFace(
         );
         if (i == 0) {
             tangent = theTangent;
+            break;
         }
         else {
             tangent += theTangent;
@@ -384,14 +589,14 @@ void CalculateSampleWeights(
 }
 
 void CreateMatrix(
-    const MPoint &origin, const MVector &normal, const MVector &up,
+    const MPoint &origin, const MFloatVector &normal, const MFloatVector &up,
     MMatrix &matrix
 )
 {
     const MPoint &t = origin;
-    const MVector &y = normal;
-    MVector x = y ^ up;
-    MVector z = x ^ y;
+    const MFloatVector &y = normal;
+    MFloatVector x = y ^ up;
+    MFloatVector z = x ^ y;
     // Renormalize vectors
     x.normalize();
     z.normalize();
