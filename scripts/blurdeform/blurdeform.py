@@ -2270,6 +2270,8 @@ class BlurDeformDialog(Dialog):
         self.popup_menu.exec_(event.globalPos())
 
     def jumpToFrame(self):
+        if not self.clickedItem:
+            return
         frameIndex = float(self.clickedItem.text(0))
         cmds.currentTime(frameIndex)
 
