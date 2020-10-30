@@ -680,8 +680,15 @@ class BlurDeformDialog(Dialog):
             # empty it the channel
             self.clearVectorMvts (currTime)
         """
+        print("currentGeom", currentGeom)
+        print("targetMesh", targetMesh)
+        print("poseName", poseName)
         cmds.blurSculpt(
-            currentGeom, addAtTime=targetMesh, poseName=poseName, offset=self.offset
+            currentGeom,
+            blurSculptName=self.currentBlurNode,
+            addAtTime=targetMesh,
+            poseName=poseName,
+            offset=self.offset,
         )
         # theBasePanel = self.doIsolate (state=0)
 
@@ -2226,7 +2233,11 @@ class BlurDeformDialog(Dialog):
                 prevIndices = []
             # add the pose
             cmds.blurSculpt(
-                geos[0], addAtTime=geom, poseName=poseName, offset=self.offset
+                geos[0],
+                blurSculptName=theBlurNode,
+                addAtTime=geom,
+                poseName=poseName,
+                offset=self.offset,
             )
 
             postIndices = cmds.getAttr(
