@@ -10,6 +10,7 @@ SET(SOURCE_FILES
 	"blurPostDeformCmd.h" 
     "common.cpp"
     "common.h"
+	"setOverloads.h"
 )
 
 FIND_PACKAGE(OpenGL REQUIRED)

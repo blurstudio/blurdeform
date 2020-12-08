@@ -57,6 +57,9 @@ class blurSculptCmd : public MPxCommand {
     const static char *kNameFlagShort;
     const static char *kNameFlagLong;
 
+    const static char *kBlurSculptNameFlagShort;
+    const static char *kBlurSculptNameFlagLong;
+
     const static char *kQueryFlagShort;
     const static char *kQueryFlagLong;
 
@@ -110,7 +113,10 @@ class blurSculptCmd : public MPxCommand {
     MStatus getListPoses();               // get list of poses
     MStatus getListFrames(int poseIndex); // get list of frames
 
-    MString name_;                 /**< Name of blurSculpt node to create. */
+    MString name_; /**< Name of blurSculpt node to create. */
+    MString blurSculptNameInput_ =
+        ""; /**< Name of the blurSculpt as an input. */
+    bool blurSculptNameProvided_ = false;
     MString poseName_;             /**< name of the pose to work with. */
     MString targetMeshAdd_;        /**< name of the target mesh to compute the
                                       deformation for the current time  */

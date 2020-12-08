@@ -32,6 +32,8 @@ const char *blurSculptCmd::kQueryFlagShort = "-q";
 const char *blurSculptCmd::kQueryFlagLong = "-query";
 const char *blurSculptCmd::kNameFlagShort = "-n";
 const char *blurSculptCmd::kNameFlagLong = "-name";
+const char *blurSculptCmd::kBlurSculptNameFlagShort = "-bn";
+const char *blurSculptCmd::kBlurSculptNameFlagLong = "-blurSculptName";
 const char *blurSculptCmd::kAddPoseNameFlagShort = "-ap";
 const char *blurSculptCmd::kAddPoseNameFlagLong = "-addPose";
 const char *blurSculptCmd::kPoseNameFlagShort = "-pn";
@@ -75,6 +77,8 @@ void DisplayHelp()
     help += "-addAtTime (-nbm)      String     the mesh target to add at the "
             "currentTime\n";
     help += "                                  needs pose name\n";
+    help += "-blurSculptName (-bn)  String     to Specify the sculptName for "
+            "addAtTime\n";
     help += "-offset (-of)          Float      the offset distance to see if a "
             "vertex is moved\n";
     help +=
@@ -98,6 +102,9 @@ MSyntax blurSculptCmd::newSyntax()
     syntax.addFlag(kListPosesFlagShort, kListPosesFlagLong);
     syntax.addFlag(kListFramesFlagShort, kListFramesFlagLong);
     syntax.addFlag(kNameFlagShort, kNameFlagLong, MSyntax::kString);
+    syntax.addFlag(
+        kBlurSculptNameFlagShort, kBlurSculptNameFlagLong, MSyntax::kString
+    );
     syntax.addFlag(kAddPoseNameFlagShort, kAddPoseNameFlagLong);
     syntax.addFlag(kPoseNameFlagShort, kPoseNameFlagLong, MSyntax::kString);
     syntax.addFlag(
@@ -167,7 +174,8 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
     if (command_ == kCommandAddPoseAtTime) {
         status = GetLatestBlurSculptNode();
         MFnDependencyNode fnBlurSculptNode(oBlurSculptNode_);
-
+        // MGlobal::displayInfo(MString("CHECK THAT EXISTS : [") +
+        // blurSculptNameInput_ + MString("]"));
         MGlobal::displayInfo(
             MString("Adding : [") + targetMeshAdd_ + MString("] to mesh [") +
             fnMeshDriven.partialPathName() + MString("]")
@@ -235,6 +243,11 @@ MStatus blurSculptCmd::GatherCommandArguments(const MArgList &args)
     if (argData.isFlagSet(kNameFlagShort)) {
         name_ = argData.flagArgumentString(kNameFlagShort, 0, &status);
         CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+    if (argData.isFlagSet(kBlurSculptNameFlagShort)) {
+        blurSculptNameInput_ =
+            argData.flagArgumentString(kBlurSculptNameFlagShort, 0, &status);
+        blurSculptNameProvided_ = true;
     }
     if (argData.isFlagSet(kPoseNameFlagShort)) {
         poseName_ = argData.flagArgumentString(kPoseNameFlagShort, 0, &status);
@@ -392,6 +405,10 @@ MStatus blurSculptCmd::GetLatestBlurSculptNode()
         MFnDependencyNode fnNode(oDeformerNode, &status);
         CHECK_MSTATUS_AND_RETURN_IT(status);
         if (fnNode.typeId() == blurSculpt::id) {
+            if (blurSculptNameProvided_ &&
+                fnNode.name() != blurSculptNameInput_) {
+                continue;
+            }
             oBlurSculptNode_ = oDeformerNode;
             MPlug thisPlug = itDG.thisPlug();
             indexInDeformer = thisPlug.logicalIndex();
