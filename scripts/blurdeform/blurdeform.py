@@ -2026,8 +2026,9 @@ class BlurDeformDialog(Dialog):
                         for indGeo in storedVectorsIndices:
                             if indGeo in geoIndices:  # if it's actually valid
                                 theGeo = blurNodeIndexToMesh[int(indGeo)]
+                                theGeoShortName = theGeo.split(":")[-1]
                                 frameGeoName = "{}_{}_f{}_{}".format(
-                                    theBlurNode, thePose, int(frame), theGeo
+                                    theBlurNode, thePose, int(frame), theGeoShortName
                                 )
                                 if withBlendShape:
                                     (deform,) = cmds.duplicate(theGeo, name="deform")
@@ -2084,6 +2085,9 @@ class BlurDeformDialog(Dialog):
                                 cmds.setAttr(frameDup + ".blurSculptIndex", indGeo)
 
                                 frameDup = cmds.parent(frameDup, theFrameGrp)
+                                print(frameDup, frameGeoName)
+                                # if frameDup != frameGeoName:
+                                #     frameDup = cmds.rename(frameDup, frameGeoName)
                                 cmds.hide(frameDup)
                                 frameDup = str(frameDup[0])
                                 createdShapes.append(frameDup)
@@ -2118,7 +2122,7 @@ class BlurDeformDialog(Dialog):
 
         return createdShapes
 
-    def restoreBackUp(self):
+    def restoreBackUp(self, forceTransform=True):
         theBlurNode = self.currentBlurNode
 
         geos, geoIndices = self.getGeom(theBlurNode, transform=True)
@@ -2231,6 +2235,22 @@ class BlurDeformDialog(Dialog):
             )
             if not prevIndices:
                 prevIndices = []
+
+            if forceTransform:
+                prt = cmds.listRelatives(geom, parent=True, path=True)
+                newGeomName = cmds.parent(geom, geos[0])
+                cmds.makeIdentity(
+                    newGeomName,
+                    apply=True,
+                    translate=True,
+                    rotate=True,
+                    scale=True,
+                    normal=0,
+                    preserveNormals=False,
+                )
+                if prt:
+                    geom = cmds.parent(newGeomName, prt)
+
             # add the pose
             cmds.blurSculpt(
                 geos[0],
