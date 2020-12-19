@@ -2249,7 +2249,7 @@ class BlurDeformDialog(Dialog):
                     preserveNormals=False,
                 )
                 if prt:
-                    geom = cmds.parent(newGeomName, prt)
+                    (geom,) = cmds.parent(newGeomName, prt)
 
             # add the pose
             cmds.blurSculpt(
