@@ -2547,16 +2547,7 @@ class BlurDeformDialog(Dialog):
 
     def refreshForShow(self):
         if not cmds.pluginInfo("blurPostDeform", q=True, loaded=True):
-            try:
-                cmds.loadPlugin("blurPostDeform")
-            except:
-                currentVersion = cmds.about(v=True)
-                version = "2016.5" if currentVersion == "2016 Extension 2" else "2016"
-                productionPath = r"\\source\production\workgroups\maya\{0}\blur\plug-ins\blurPostDeform.mll".format(
-                    version
-                )
-                print(productionPath)
-                cmds.loadPlugin(productionPath)
+            cmds.loadPlugin("blurPostDeform")
 
         # print "CALLING REFRESH OPENING"
         if self.addTimeLine:
