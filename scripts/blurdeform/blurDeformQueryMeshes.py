@@ -1,12 +1,9 @@
 from __future__ import print_function
 from blurdev.gui import Dialog
-from studio.gui.resource import Icons
-from Qt import QtCore, QtGui, QtWidgets
+from Qt import QtCore, QtWidgets
 import blurdev
 import difflib
-from maya import cmds, mel
-
-from functools import partial
+from maya import cmds
 
 
 class blurDeformQueryMeshes(Dialog):

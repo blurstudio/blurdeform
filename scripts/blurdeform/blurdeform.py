@@ -9,18 +9,19 @@
 #   :date       03/22/17
 #
 
-# we import from blurdev.gui vs. QtGui because there are some additional management features for running the Dialog in multiple environments
 from __future__ import print_function
+import blurdev
 from blurdev.gui import Dialog
-from studio.gui.resource import Icons
+from blurdev.gui import iconFactory
 from Qt import QtGui, QtCore, QtWidgets, QtCompat
-import blurdev.debug
 
 from . import extraWidgets, blurAddPose, blurDeformQueryMeshes, storeXml
 from functools import partial
 from xml.dom import minidom
 import xml.etree.ElementTree as ET
-import codecs, os
+import codecs
+import os
+from maya import cmds, mel, OpenMaya
 
 
 def getIcon(iconNm):
@@ -31,26 +32,23 @@ def getIcon(iconNm):
 
 
 _icons = {
-    "disconnect": Icons.getIcon("plug--minus"),
-    "fromScene": Icons.getIcon("arrow-180"),
-    "toFrame": Icons.getIcon("arrow-curve-000-left"),
-    "refresh": Icons.getIcon("arrow-circle-double"),
-    "publish": Icons.getIcon("shotgun"),
-    "Add": Icons.getIcon("plus-button"),
-    "Delete": Icons.getIcon("cross-button"),
+    "disconnect": iconFactory.getIcon("plug--minus"),
+    "fromScene": iconFactory.getIcon("arrow-180"),
+    "toFrame": iconFactory.getIcon("arrow-curve-000-left"),
+    "refresh": iconFactory.getIcon("arrow-circle-double"),
+    "publish": iconFactory.getIcon("shotgun"),
+    "Add": iconFactory.getIcon("plus-button"),
+    "Delete": iconFactory.getIcon("cross-button"),
     "AddMeshToBlurNode": getIcon("plusMesh-button"),
     "RmvMeshToBlurNode": getIcon("minusMesh-button"),
-    "empty": Icons.getIcon("border-down"),
+    "empty": iconFactory.getIcon("border-down"),
     "cancelEdit": getIcon("cancelEdit"),
     "edit": getIcon("edit"),
-    "gear": Icons.getIcon(r"gear"),
-    "backUp": Icons.getIcon("arrow-skip-270"),
-    "restore": Icons.getIcon("arrow-transition-090--green"),
-    "addFrame": Icons.getIcon("asterisk--plus"),
+    "gear": iconFactory.getIcon(r"gear"),
+    "backUp": iconFactory.getIcon("arrow-skip-270"),
+    "restore": iconFactory.getIcon("arrow-transition-090--green"),
+    "addFrame": iconFactory.getIcon("asterisk--plus"),
 }
-
-import blurdev
-from maya import cmds, mel, OpenMaya
 
 
 def orderMelList(listInd, onlyStr=True):
@@ -1187,7 +1185,6 @@ class BlurDeformDialog(Dialog):
                 self.uiPosesTW.setCurrentItem(self.uiPosesTW.topLevelItem(0))
 
     def changedSelection(self, item, column):
-        # blurdev.debug.debugMsg( "hello "  +  item.row (), blurdev.debug.DebugLevel.High)
         self.currentBlurNode = str(item.text(0))
         # self.currentGeom =  str(item.text(1))
         self.currentGeometries, self.currentGeometriesIndices = self.getGeom(

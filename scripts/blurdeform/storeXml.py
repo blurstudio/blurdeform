@@ -1,16 +1,14 @@
 from __future__ import print_function
 from blurdev.gui import Dialog
-from studio.gui.resource import Icons
 from Qt import QtGui, QtWidgets, QtCore
-import blurdev.debug
 
 from . import extraWidgets
-import codecs, re
+import codecs
+import re
 import os
 import blurdev
 
-from maya import cmds, mel
-import sip
+from maya import cmds
 from xml.dom import minidom
 import xml.etree.ElementTree as ET
 

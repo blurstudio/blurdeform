@@ -1,13 +1,7 @@
 from blurdev.gui import Dialog
-from studio.gui.resource import Icons
 from Qt import QtCore
-import blurdev.debug
-
-
 import blurdev
-
-from maya import cmds, mel
-import sip
+from maya import cmds
 
 
 class BlurAddPose(Dialog):
