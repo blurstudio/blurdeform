@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import absolute_import
 from maya import OpenMaya, OpenMayaMPx, OpenMayaUI, cmds, mel
 from Qt import QtWidgets, QtCore, QtGui
 import blurdev
