@@ -12,6 +12,7 @@ import blurdev
 from maya import cmds
 from xml.dom import minidom
 import xml.etree.ElementTree as ET
+from six.moves import range
 
 
 class StoreXml(Dialog):

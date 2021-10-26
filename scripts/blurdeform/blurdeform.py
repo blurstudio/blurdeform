@@ -23,6 +23,7 @@ import xml.etree.ElementTree as ET
 import codecs
 import os
 from maya import cmds, mel, OpenMaya
+from six.moves import range
 
 
 def getIcon(iconNm):

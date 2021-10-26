@@ -5,6 +5,7 @@ from Qt import QtCore, QtWidgets
 import blurdev
 import difflib
 from maya import cmds
+from six.moves import range
 
 
 class blurDeformQueryMeshes(Dialog):
