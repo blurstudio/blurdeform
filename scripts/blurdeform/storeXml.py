@@ -13,6 +13,7 @@ from maya import cmds
 from xml.dom import minidom
 import xml.etree.ElementTree as ET
 from six.moves import range
+import six
 
 
 class StoreXml(Dialog):
@@ -221,7 +222,7 @@ class StoreXml(Dialog):
         fileIndexToMesh = self.blurFileInfo[geomSorted]
 
         dicIndexFileToIndexNode = {}
-        for indexGeo, meshName in blurNodeMeshToIndex.iteritems():
+        for indexGeo, meshName in six.iteritems(blurNodeMeshToIndex):
             indexFile = fileIndexToMesh[meshName]
             dicIndexFileToIndexNode[indexFile] = indexGeo
         print(dicIndexFileToIndexNode)
@@ -352,8 +353,8 @@ class StoreXml(Dialog):
                     for (
                         indexGeo
                     ) in storedVectorsIndices:  # remove if it's in the copy list
-                        if (
-                            indexGeo in dicIndexFileToIndexNode.values()
+                        if indexGeo in list(
+                            dicIndexFileToIndexNode.values()
                         ):  # if something we'll edit we remove it
                             cmds.removeMultiInstance(
                                 frameName + ".storedVectors[{}]".format(indexGeo),
@@ -443,7 +444,7 @@ class StoreXml(Dialog):
                     QTprogress=self.progressBar,
                     frontWindow=False,
                 ) as pBar:
-                    for blurNode, inputPoseFramesIndices in dicBlurPoses.iteritems():
+                    for blurNode, inputPoseFramesIndices in six.iteritems(dicBlurPoses):
                         if not pBar.update():
                             break
                         created_tag = self.parentWindow.storeInfoBlurSculpt(
@@ -486,7 +487,7 @@ class StoreXml(Dialog):
 
     def refreshTreeFromRoot(self, root):
         chds = root.getchildren()
-        geomsSelected = self.blurDic.keys()
+        geomsSelected = list(self.blurDic.keys())
         # geomsSelected = [ " - ".join(sorted(geoStr.split(" - "))) for geoStr in self.blurDic.keys () ]
         itemsToSelect = []
         with extraWidgets.MayaProgressBar(

@@ -24,6 +24,7 @@ import codecs
 import os
 from maya import cmds, mel, OpenMaya
 from six.moves import range
+import six
 
 
 def getIcon(iconNm):
@@ -284,7 +285,7 @@ class BlurDeformDialog(Dialog):
 
         # 0 storeBasicMvt
         currentPosi = {}
-        for geo, vertices in selectedVertices.iteritems():
+        for geo, vertices in six.iteritems(selectedVertices):
             toGetPosi = ["{}.vtx[{}]".format(geo, el) for el in orderMelList(vertices)]
             xDest = cmds.xform(toGetPosi, q=True, ws=True, t=True)
             currentPosi[geo] = xDest
@@ -294,7 +295,7 @@ class BlurDeformDialog(Dialog):
 
         # 2 - store position
         theDeltas = {}
-        for geo, vertices in selectedVertices.iteritems():
+        for geo, vertices in six.iteritems(selectedVertices):
             toGetPosi = ["{}.vtx[{}]".format(geo, el) for el in orderMelList(vertices)]
             xDest = cmds.xform(toGetPosi, q=True, ws=True, t=True)
             deltas = [a_i - b_i for a_i, b_i in zip(xDest, currentPosi[geo])]
@@ -306,7 +307,7 @@ class BlurDeformDialog(Dialog):
         # 4 - now apply
         storedVectorsIndices = cmds.getAttr(frameName + ".storedVectors", mi=True) or []
 
-        for geo, thevertIndices in selectedVertices.iteritems():
+        for geo, thevertIndices in six.iteritems(selectedVertices):
             if geo in self.currentGeometries:
                 indexGeo = self.currentGeometriesIndices[
                     self.currentGeometries.index(geo)
@@ -1705,7 +1706,7 @@ class BlurDeformDialog(Dialog):
 
         posesIndices = map(int, cmds.getAttr(blurNode + ".poses", mi=True))
         if inputPoseFramesIndices:
-            posesIndices = inputPoseFramesIndices.keys()
+            posesIndices = list(inputPoseFramesIndices.keys())
 
         # first store positions
         for logicalInd in posesIndices:
