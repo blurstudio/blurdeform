@@ -25,6 +25,7 @@ import os
 from maya import cmds, mel, OpenMaya
 from six.moves import range
 import six
+from six.moves import map
 
 
 def getIcon(iconNm):
@@ -386,7 +387,7 @@ class BlurDeformDialog(Dialog):
                     mi=True,
                 )
                 if mvtIndices:
-                    mvtIndices = map(int, mvtIndices)
+                    mvtIndices = list(map(int, mvtIndices))
                     toDeleteSet = set(verticesIndToDelete).intersection(set(mvtIndices))
                     if len(toDeleteSet) == len(mvtIndices):  # delete All the array
                         cmds.removeMultiInstance(
@@ -407,7 +408,7 @@ class BlurDeformDialog(Dialog):
         defIndices = cmds.getAttr(self.currentPose + ".deformations", mi=True)
         if not defIndices:
             defIndices = []
-        listDeformationsIndices = map(int, defIndices)
+        listDeformationsIndices = list(map(int, defIndices))
         listDeformationsFrame = [
             cmds.getAttr(self.currentPose + ".deformations[{0}].frame".format(ind))
             for ind in listDeformationsIndices
@@ -481,8 +482,8 @@ class BlurDeformDialog(Dialog):
     def duplicateFrame(self, prevTime, currTime):
         with extraWidgets.WaitCursorCtxt():
             poseName = cmds.getAttr(self.currentPose + ".poseName")
-            listDeformationsIndices = map(
-                int, cmds.getAttr(self.currentPose + ".deformations", mi=True)
+            listDeformationsIndices = list(
+                map(int, cmds.getAttr(self.currentPose + ".deformations", mi=True))
             )
 
             dicVal = {"pose": self.currentPose}
@@ -694,8 +695,8 @@ class BlurDeformDialog(Dialog):
         # theBasePanel = self.doIsolate (state=0)
 
     def clearVectorMvts(self, currTime):
-        listDeformationsIndices = map(
-            int, cmds.getAttr(self.currentPose + ".deformations", mi=True)
+        listDeformationsIndices = list(
+            map(int, cmds.getAttr(self.currentPose + ".deformations", mi=True))
         )
         listDeformationsFrame = self.getListDeformationFrames()
         frameIndex = listDeformationsIndices[listDeformationsFrame.index(currTime)]
@@ -735,7 +736,7 @@ class BlurDeformDialog(Dialog):
         poseName = cmds.getAttr(self.currentPose + ".poseName")
         deformList = cmds.getAttr(self.currentPose + ".deformations", mi=True)
 
-        listDeformationsIndices = map(int, deformList) if deformList else []
+        listDeformationsIndices = list(map(int, deformList)) if deformList else []
         currTime = cmds.currentTime(q=True)
 
         dicVal = {"pose": self.currentPose}
@@ -773,7 +774,7 @@ class BlurDeformDialog(Dialog):
                 for currentFrameItem in self.uiFramesTW.selectedItems()
             ]
         )
-        framesToDelete = map(str, framesToDelete)
+        framesToDelete = list(map(str, framesToDelete))
 
         res = cmds.confirmDialog(
             title="delete",
@@ -1113,8 +1114,8 @@ class BlurDeformDialog(Dialog):
             # print "list Poses is " + listPoses
             dicVal = {"blurNode": self.currentBlurNode}
 
-            posesIndices = map(
-                int, cmds.getAttr(self.currentBlurNode + ".poses", mi=True)
+            posesIndices = list(
+                map(int, cmds.getAttr(self.currentBlurNode + ".poses", mi=True))
             )
             # for indNm, thePose in enumerate(listPoses) :
             #   logicalInd =posesIndices [indNm]
@@ -1548,7 +1549,7 @@ class BlurDeformDialog(Dialog):
         dicPoses = {}
         newInd = 0
         if pses:
-            posesIndices = map(int, pses)
+            posesIndices = list(map(int, pses))
             for logicalInd in posesIndices:
                 dicVal["indPose"] = logicalInd
                 poseName = cmds.getAttr(
@@ -1669,7 +1670,7 @@ class BlurDeformDialog(Dialog):
                             frameName + ".vectorMovements", mi=True
                         )
                         if mvtIndices:
-                            mvtIndices = map(int, mvtIndices)
+                            mvtIndices = list(map(int, mvtIndices))
                             for indVtx in mvtIndices:
                                 cmds.removeMultiInstance(
                                     frameName + ".vectorMovements[{0}]".format(indVtx),
@@ -1681,7 +1682,7 @@ class BlurDeformDialog(Dialog):
                         index = int(vectag.get("index"))
                         dicVal["vecInd"] = index
                         value = vectag.get("value")
-                        floatVal = map(float, value[1:-1].split(", "))
+                        floatVal = list(map(float, value[1:-1].split(", ")))
                         cmds.setAttr(
                             "{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements[{vecInd}]".format(
                                 **dicVal
@@ -1704,7 +1705,7 @@ class BlurDeformDialog(Dialog):
             return blurNode_tag
         dicVal = {"blurNode": blurNode}
 
-        posesIndices = map(int, cmds.getAttr(blurNode + ".poses", mi=True))
+        posesIndices = list(map(int, cmds.getAttr(blurNode + ".poses", mi=True)))
         if inputPoseFramesIndices:
             posesIndices = list(inputPoseFramesIndices.keys())
 
@@ -1879,7 +1880,9 @@ class BlurDeformDialog(Dialog):
                     return
                 dicVal = {"blurNode": theBlurNode}
 
-                posesIndices = map(int, cmds.getAttr(theBlurNode + ".poses", mi=True))
+                posesIndices = list(
+                    map(int, cmds.getAttr(theBlurNode + ".poses", mi=True))
+                )
                 # first store positions
                 storedStates = {}
                 for logicalInd in posesIndices:
@@ -2147,7 +2150,7 @@ class BlurDeformDialog(Dialog):
 
         posesIndices = cmds.getAttr(theBlurNode + ".poses", mi=True)
         if posesIndices:
-            posesIndices = map(int, posesIndices)
+            posesIndices = list(map(int, posesIndices))
             poseNames = [
                 cmds.getAttr("{blurNode}.poses[{i}].poseName".format(i=i, **dicVal))
                 for i in posesIndices
@@ -2198,7 +2201,9 @@ class BlurDeformDialog(Dialog):
                     withRefresh=False,
                 )
 
-                posesIndices = map(int, cmds.getAttr(theBlurNode + ".poses", mi=True))
+                posesIndices = list(
+                    map(int, cmds.getAttr(theBlurNode + ".poses", mi=True))
+                )
                 poseNames = [
                     cmds.getAttr("{blurNode}.poses[{i}].poseName".format(i=i, **dicVal))
                     for i in posesIndices

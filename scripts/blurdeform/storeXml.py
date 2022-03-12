@@ -14,6 +14,7 @@ from xml.dom import minidom
 import xml.etree.ElementTree as ET
 from six.moves import range
 import six
+from six.moves import map
 
 
 class StoreXml(Dialog):
@@ -64,7 +65,7 @@ class StoreXml(Dialog):
             blurNodes = [blurNodes]
         for blurNode in blurNodes:
             dicVal = {"blurNode": blurNode}
-            posesIndices = map(int, cmds.getAttr(blurNode + ".poses", mi=True))
+            posesIndices = list(map(int, cmds.getAttr(blurNode + ".poses", mi=True)))
 
             theParent = self.parentWindow.getGeom(blurNode, transform=True)
 
@@ -232,7 +233,7 @@ class StoreXml(Dialog):
         dicPoses = {}
         newInd = 0
         if pses:
-            posesIndices = map(int, pses)
+            posesIndices = list(map(int, pses))
             for logicalInd in posesIndices:
                 dicVal["indPose"] = logicalInd
                 poseName = cmds.getAttr(
@@ -375,7 +376,7 @@ class StoreXml(Dialog):
                         index = int(vectag.get("index"))
                         dicVal["vecInd"] = index
                         value = vectag.get("value")
-                        floatVal = map(float, value[1:-1].split(", "))
+                        floatVal = list(map(float, value[1:-1].split(", ")))
                         # cmds.setAttr ("{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements[{vecInd}]".format (**dicVal), *floatVal)
                         # set to the index zero
                         cmds.setAttr(
@@ -398,7 +399,7 @@ class StoreXml(Dialog):
                             index = int(vectag.get("index"))
                             dicVal["vecInd"] = index
                             value = vectag.get("value")
-                            floatVal = map(float, value[1:-1].split(", "))
+                            floatVal = list(map(float, value[1:-1].split(", ")))
                             # cmds.setAttr ("{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements[{vecInd}]".format (**dicVal), *floatVal)
                             # set to the index zero
                             cmds.setAttr(
