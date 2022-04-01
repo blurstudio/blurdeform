@@ -135,6 +135,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
         "blueLightColor": "background-color: rgb(153,255, 255);",
     }
     pressedColor = "background-color: rgb(255, 255, 255);"
+    moving = False
 
     def delete(self):
         self.theTimeSlider.listKeys.remove(self)
@@ -142,31 +143,31 @@ class KeyFrameBtn(QtWidgets.QPushButton):
 
     def mouseMoveEvent(self, event):
         # print "begin  mouseMove event"
+        if self.moving:
+            controlShitPressed = (
+                event.modifiers() == QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier
+            )
+            shiftPressed = (
+                controlShitPressed
+                or event.modifiers()
+                == QtCore.Qt.KeyboardModifiers(QtCore.Qt.ShiftModifier)
+            )
+            Xpos = event.globalX() - self.globalX + self.prevPos.x()
+            theKey = (Xpos - self.startPos) / self.oneKeySize
+            if not shiftPressed:
+                theKey = int(theKey)
+            theTime = theKey + self.startpb
 
-        controlShitPressed = (
-            event.modifiers() == QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier
-        )
-        shiftPressed = (
-            controlShitPressed
-            or event.modifiers() == QtCore.Qt.KeyboardModifiers(QtCore.Qt.ShiftModifier)
-        )
+            if theTime < self.start:
+                theTime = self.start
+            elif theTime > self.end:
+                theTime = self.end
 
-        Xpos = event.globalX() - self.globalX + self.prevPos.x()
-        theKey = (Xpos - self.startPos) / self.oneKeySize
-        if not shiftPressed:
-            theKey = int(theKey)
-        theTime = theKey + self.startpb
-
-        if theTime < self.start:
-            theTime = self.start
-        elif theTime > self.end:
-            theTime = self.end
-
-        if shiftPressed:
-            self.theTime = round(theTime, 3)
-        else:
-            self.theTime = int(theTime)
-        self.updatePosition()
+            if shiftPressed:
+                self.theTime = round(theTime, 3)
+            else:
+                self.theTime = int(theTime)
+            self.updatePosition()
 
         # print "end  mouseMove event"
         super(KeyFrameBtn, self).mouseMoveEvent(event)
@@ -190,7 +191,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
             offsetKey = 1
 
         self.duplicateMode = controlPressed
-
+        self.moving = False
         if not self.checked:
             self.select(addSel=controlPressed)
         if event.button() == QtCore.Qt.RightButton:
@@ -201,7 +202,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
             self.mainWindow.popup_menu.exec_(event.globalPos())
 
         elif event.button() == QtCore.Qt.LeftButton:
-
+            self.moving = True
             self.globalX = event.globalX()
             self.prevPos = self.pos()
             self.prevTime = self.theTime
@@ -224,7 +225,11 @@ class KeyFrameBtn(QtWidgets.QPushButton):
 
             if self.duplicateMode:
                 self.theTimeSlider.addDisplayKey(self.prevTime, isEmpty=self.isEmpty)
+        elif event.button() == QtCore.Qt.MidButton:
+            frameIndex = float(self.theTime)
+            cmds.currentTime(frameIndex)
 
+            # self.jumpToFrame()
             """
             super (KeyFrameBtn, self ).mousePressEvent (event)
         else : 
@@ -234,8 +239,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
 
     def mouseReleaseEvent(self, event):
         super(KeyFrameBtn, self).mouseReleaseEvent(event)
-        if self.prevTime != self.theTime:
-
+        if self.moving and self.prevTime != self.theTime:
             if self.duplicateMode:
                 self.mainWindow.duplicateFrame(self.prevTime, self.theTime)
             else:
@@ -250,6 +254,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
                     self.updatePosition()
                     cmds.evalDeferred(self.doChangeTime)
                     cmds.undoInfo(undoName="moveSeveralKeys", closeChunk=True)
+        self.moving = False
 
     def doChangeTime(self):
         index = self.theTimeSlider.listKeys.index(self)
@@ -293,8 +298,11 @@ class KeyFrameBtn(QtWidgets.QPushButton):
             end = cmds.playbackOptions(q=True, maxTime=True)
 
         isVisible = self.theTime >= start and self.theTime <= end
+        try:
+            self.setVisible(isVisible)
+        except RuntimeError:
+            return None
 
-        self.setVisible(isVisible)
         if isVisible:
             if oneKeySize == None or startPos == None:
                 theTimeSlider_width = self.theTimeSlider.width()

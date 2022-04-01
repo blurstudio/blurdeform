@@ -13,7 +13,6 @@ from __future__ import print_function
 from __future__ import absolute_import
 import blurdev
 from blurdev.gui import Dialog
-from blurdev.gui import iconFactory
 from Qt import QtGui, QtCore, QtWidgets, QtCompat
 
 from . import extraWidgets, blurAddPose, blurDeformQueryMeshes, storeXml
@@ -36,22 +35,22 @@ def getIcon(iconNm):
 
 
 _icons = {
-    "disconnect": iconFactory.getIcon("plug--minus"),
-    "fromScene": iconFactory.getIcon("arrow-180"),
-    "toFrame": iconFactory.getIcon("arrow-curve-000-left"),
-    "refresh": iconFactory.getIcon("arrow-circle-double"),
-    "publish": iconFactory.getIcon("shotgun"),
-    "Add": iconFactory.getIcon("plus-button"),
-    "Delete": iconFactory.getIcon("cross-button"),
     "AddMeshToBlurNode": getIcon("plusMesh-button"),
     "RmvMeshToBlurNode": getIcon("minusMesh-button"),
-    "empty": iconFactory.getIcon("border-down"),
+    "disconnect": getIcon("disconnect"),
+    "fromScene": getIcon("fromScene"),
+    "toFrame": getIcon("toFrame"),
+    "refresh": getIcon("refresh"),
+    "publish": getIcon("publish"),
+    "Add": getIcon("Add"),
+    "Delete": getIcon("Delete"),
+    "empty": getIcon("empty"),
     "cancelEdit": getIcon("cancelEdit"),
-    "edit": getIcon("edit"),
-    "gear": iconFactory.getIcon(r"gear"),
-    "backUp": iconFactory.getIcon("arrow-skip-270"),
-    "restore": iconFactory.getIcon("arrow-transition-090--green"),
-    "addFrame": iconFactory.getIcon("asterisk--plus"),
+    "edit": getIcon(r"edit"),
+    "gear": getIcon(r"gear"),
+    "backUp": getIcon("backUp"),
+    "restore": getIcon("restore"),
+    "addFrame": getIcon("addFrame"),
 }
 
 
