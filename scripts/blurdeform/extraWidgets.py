@@ -23,6 +23,26 @@ def getQTObject():
     return el
 
 
+class SettingVariable(object):
+    def __init__(self, variableHolder, variableName, valueOn=True, valueOut=False):
+        self.variableHolder = variableHolder
+        self.variableName = variableName
+        self.valueOn = valueOn
+        self.valueOut = valueOut
+
+    def __enter__(self):
+        if isinstance(self.variableHolder, dict):
+            self.variableHolder[self.variableName] = self.valueOn
+        else:
+            self.variableHolder.__dict__[self.variableName] = self.valueOn
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if isinstance(self.variableHolder, dict):
+            self.variableHolder[self.variableName] = self.valueOut
+        else:
+            self.variableHolder.__dict__[self.variableName] = self.valueOut
+
+
 class toggleBlockSignals(object):
     def __init__(self, listWidgets, raise_error=True):
         self.listWidgets = listWidgets
@@ -199,7 +219,9 @@ class KeyFrameBtn(QtWidgets.QPushButton):
             itemFrame = self.mainWindow.uiFramesTW.topLevelItem(index)
 
             self.mainWindow.clickedItem = itemFrame
-            self.mainWindow.popup_menu.exec_(event.globalPos())
+            self.mainWindow.popup_menu.fromFrame = True
+            self.mainWindow.launchPopupMenu(event.globalPos(), 1)
+            # popup_menu.exec_
 
         elif event.button() == QtCore.Qt.LeftButton:
             self.moving = True
@@ -416,15 +438,21 @@ class TheTimeSlider(QtWidgets.QWidget):
 
 
 class WaitCursorCtxt(object):
-    def __init__(self, raise_error=True):
+    def __init__(self, raise_error=True, suspendRefresh=False):
         self.raise_error = raise_error
+        self.suspendRefresh = suspendRefresh
 
     def __enter__(self):
         cmds.waitCursor(state=True)
+        if self.suspendRefresh:
+            cmds.refresh(suspend=True)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if cmds.waitCursor(q=True, state=True):
             cmds.waitCursor(state=False)
+        if self.suspendRefresh:
+            cmds.refresh(suspend=False)
+            cmds.refresh()
 
 
 """
