@@ -2225,11 +2225,11 @@ class BlurDeformDialog(Dialog):
             poseName = split[1]  # "_".join (split[1:-2])
             frame = split[2]
 
-            deformedGeometry = (
-                split[3] if len(split) > 3 and split[3] in geos else geos[0]
-            )
+            deformedGeometry = "_".join(split[3:]) if len(split) > 3 else ""
+            if deformedGeometry not in geos:
+                deformedGeometry = geos[0]
+
             frame = float(frame[1:])
-            print(blurNode, frame, poseName)
 
             if cmds.attributeQuery("blurSculptIndex", node=geom, ex=True):
                 blurSculptIndex = cmds.getAttr(geom + ".blurSculptIndex")
@@ -2238,10 +2238,8 @@ class BlurDeformDialog(Dialog):
 
             if cmds.attributeQuery("sourceMesh", node=geom, ex=True):
                 sourceMesh = cmds.getAttr(geom + ".sourceMesh")
-            else:
-                sourceMesh = ""
-
-            # "blurSculptNode" "sourceMesh" "blurSculptIndex"
+                if cmds.objExists(sourceMesh):
+                    deformedGeometry = sourceMesh
 
             if poseName not in poseNames:
                 local = True
