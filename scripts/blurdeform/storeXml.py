@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 from six.moves import range
 import six
 from six.moves import map
+from six.moves import zip
 
 
 class StoreXml(Dialog):

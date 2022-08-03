@@ -6,6 +6,7 @@ import blurdev
 import difflib
 from maya import cmds
 from six.moves import range
+from six.moves import zip
 
 
 class blurDeformQueryMeshes(Dialog):
@@ -44,7 +45,7 @@ class blurDeformQueryMeshes(Dialog):
             self.uiMeshesLW.setColumnCount(2)
             self.uiMeshesLW.setHeaderLabels(["selection", "deformedMeshes"])
             nbVtxOrig = [cmds.polyEvaluate(el, v=True) for el in self.addComboMeshes]
-            origName_nbOrigVtx = zip(self.addComboMeshes, nbVtxOrig)
+            origName_nbOrigVtx = list(zip(self.addComboMeshes, nbVtxOrig))
 
         else:
             self.uiMeshesLW.setHeaderHidden(True)

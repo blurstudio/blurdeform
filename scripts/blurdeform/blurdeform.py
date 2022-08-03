@@ -25,6 +25,7 @@ from maya import cmds, mel, OpenMaya
 from six.moves import range
 import six
 from six.moves import map
+from six.moves import zip
 
 
 def getIcon(iconNm):
@@ -60,13 +61,13 @@ def orderMelList(listInd, onlyStr=True):
     listIndStringAndCount = []
 
     it = iter(listInd)
-    currentValue = it.next()
+    currentValue = next(it)
     while True:
         try:
             firstVal = currentValue
             theVal = firstVal
             while currentValue == theVal:
-                currentValue = it.next()
+                currentValue = next(it)
                 theVal += 1
             theVal -= 1
             if firstVal != theVal:
@@ -210,7 +211,9 @@ class BlurDeformDialog(Dialog):
                 blurDeformQueryMeshes.blurDeformQueryMeshes, instance=True, modal=True
             )
             selectedMeshes = self.blurDeformQueryMeshesWin.listSelectedMeshes
-            indicesMeshes = zip(self.currentGeometriesIndices, self.currentGeometries)
+            indicesMeshes = list(
+                zip(self.currentGeometriesIndices, self.currentGeometries)
+            )
             for index, geo in indicesMeshes:
                 if geo in selectedMeshes:
                     indicesToCopy.append(index)
@@ -348,7 +351,7 @@ class BlurDeformDialog(Dialog):
             toGetPosi = ["{}.vtx[{}]".format(geo, el) for el in orderMelList(vertices)]
             xDest = cmds.xform(toGetPosi, q=True, ws=True, t=True)
             deltas = [a_i - b_i for a_i, b_i in zip(xDest, currentPosi[geo])]
-            theDeltas[geo] = zip(deltas[0::3], deltas[1::3], deltas[2::3])
+            theDeltas[geo] = list(zip(deltas[0::3], deltas[1::3], deltas[2::3]))
 
         # 3 - enable frame
         cmds.setAttr(frameName + ".frameEnabled", 1)
@@ -1353,7 +1356,7 @@ class BlurDeformDialog(Dialog):
     # ----------------------- EDIT MODE  --------------------------------------------------
     def enterEditMode(self):
         self.resForDuplicate = []
-        geoAndIndex = zip(self.currentGeometries, self.currentGeometriesIndices)
+        geoAndIndex = list(zip(self.currentGeometries, self.currentGeometriesIndices))
         for geo, geoIndex in geoAndIndex:
             nameSpaceSplit = geo.split(":")
             """
