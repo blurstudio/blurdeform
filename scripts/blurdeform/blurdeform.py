@@ -208,7 +208,9 @@ class BlurDeformDialog(Dialog):
                 None,
             )
             blurdev.launch(
-                blurDeformQueryMeshes.blurDeformQueryMeshes, instance=True, modal=True
+                blurDeformQueryMeshes.blurDeformQueryMeshes,
+                instance=True,
+                modal=True,
             )
             selectedMeshes = self.blurDeformQueryMeshesWin.listSelectedMeshes
             indicesMeshes = list(
@@ -256,7 +258,8 @@ class BlurDeformDialog(Dialog):
             for indexGeo in indicesToCopy:  # remove if it's in the copy list
                 if indexGeo in storedVectorsIndices:
                     cmds.removeMultiInstance(
-                        frameName + ".storedVectors[{}]".format(indexGeo), b=True
+                        frameName + ".storedVectors[{}]".format(indexGeo),
+                        b=True,
                     )
 
             # then set them
@@ -442,7 +445,8 @@ class BlurDeformDialog(Dialog):
                     toDeleteSet = set(verticesIndToDelete).intersection(set(mvtIndices))
                     if len(toDeleteSet) == len(mvtIndices):  # delete All the array
                         cmds.removeMultiInstance(
-                            frameName + ".storedVectors[{}]".format(indexGeo), b=True
+                            frameName + ".storedVectors[{}]".format(indexGeo),
+                            b=True,
                         )
                     else:
                         for indVtx in toDeleteSet:
@@ -475,9 +479,10 @@ class BlurDeformDialog(Dialog):
             newBlurSculpt = cmds.deformer(type="blurSculpt")
 
             (self.currentBlurNode,) = newBlurSculpt
-            self.currentGeometries, self.currentGeometriesIndices = self.getGeom(
-                self.currentBlurNode, transform=True
-            )
+            (
+                self.currentGeometries,
+                self.currentGeometriesIndices,
+            ) = self.getGeom(self.currentBlurNode, transform=True)
             # self.currentGeom = geom
 
             self.currentPose = ""
@@ -534,7 +539,10 @@ class BlurDeformDialog(Dialog):
         with extraWidgets.WaitCursorCtxt():
             poseName = cmds.getAttr(self.currentPose + ".poseName")
             listDeformationsIndices = list(
-                map(int, cmds.getAttr(self.currentPose + ".deformations", mi=True))
+                map(
+                    int,
+                    cmds.getAttr(self.currentPose + ".deformations", mi=True),
+                )
             )
 
             dicVal = {"pose": self.currentPose}
@@ -690,7 +698,9 @@ class BlurDeformDialog(Dialog):
                         toHide.append(selection[0])
                 else:
                     self.doAddNewFrame(
-                        self.currentBlurNode, self.currentGeometries[0], selection[0]
+                        self.currentBlurNode,
+                        self.currentGeometries[0],
+                        selection[0],
                     )
                     toHide.append(selection[0])
 
@@ -752,7 +762,10 @@ class BlurDeformDialog(Dialog):
         listDeformationsFrame = self.getListDeformationFrames()
         frameIndex = listDeformationsIndices[listDeformationsFrame.index(currTime)]
 
-        dicVal = {"blurNode": self.currentBlurNode, "currentPose": self.currentPose}
+        dicVal = {
+            "blurNode": self.currentBlurNode,
+            "currentPose": self.currentPose,
+        }
         dicVal["indDeform"] = frameIndex
 
         # indices = cmds.getAttr ("{currentPose}.deformations[{indDeform}].vectorMovements".format (**dicVal) , mi=True)
@@ -963,7 +976,9 @@ class BlurDeformDialog(Dialog):
         if selection:
             self.uiTransformLE.setText(selection[0])
             cmds.connectAttr(
-                selection[0] + ".matrix", self.currentPose + ".poseMatrix", f=True
+                selection[0] + ".matrix",
+                self.currentPose + ".poseMatrix",
+                f=True,
             )
 
     def disConnectMatrix(self):
@@ -1055,7 +1070,10 @@ class BlurDeformDialog(Dialog):
                     for i in range(len(listDeformationsFrame))
                 ]
                 listDeformationsFrameandIndices.sort()
-                for deformFrame, logicalFrameIndex in listDeformationsFrameandIndices:
+                for (
+                    deformFrame,
+                    logicalFrameIndex,
+                ) in listDeformationsFrameandIndices:
                     frameItem = QtWidgets.QTreeWidgetItem()
                     frameItem.setText(0, str(deformFrame))
                     frameItem.setFlags(
@@ -1407,7 +1425,9 @@ class BlurDeformDialog(Dialog):
                     )
                 else:
                     newName = "{}_{}_f{}_".format(
-                        self.currentBlurNode, poseName, int(cmds.currentTime(q=True))
+                        self.currentBlurNode,
+                        poseName,
+                        int(cmds.currentTime(q=True)),
                     )
                 cmds.rename(geo, newName)
             self.resForDuplicate = []
@@ -1519,7 +1539,8 @@ class BlurDeformDialog(Dialog):
         self.popup_option.addAction("retrieve xml file", self.callOpenXml)
         self.popup_option.addSeparator()
         self.popup_option.addAction(
-            "set distance offset [{0}]".format(self.offset), self.setDistanceOffset
+            "set distance offset [{0}]".format(self.offset),
+            self.setDistanceOffset,
         )
 
         if cmds.optionVar(exists="blurScluptKeep"):
@@ -1551,7 +1572,10 @@ class BlurDeformDialog(Dialog):
         splt = sceneName.split("/")
         startDir = "/".join(splt[:-1])
         res = cmds.fileDialog2(
-            fileMode=0, dialogStyle=1, caption="save data", startingDirectory=startDir
+            fileMode=0,
+            dialogStyle=1,
+            caption="save data",
+            startingDirectory=startDir,
         )
         if res:
             destinationFile = res.pop()
@@ -1612,10 +1636,10 @@ class BlurDeformDialog(Dialog):
                 dicPoses[poseName] = logicalInd
             newInd = max(posesIndices) + 1
 
-        for blurNode_tag in root.getchildren():
+        for blurNode_tag in list(iter(root)):
             blurName = blurNode_tag.get("name")
             print(blurName)
-            for pose_tag in blurNode_tag.getchildren():
+            for pose_tag in list(iter(blurNode_tag)):
                 poseName = pose_tag.get("poseName")
                 print(poseName)
 
@@ -1669,7 +1693,8 @@ class BlurDeformDialog(Dialog):
                 dicFrames = {}
                 newFrameInd = 0
                 listDeformationsIndices = cmds.getAttr(
-                    "{blurNode}.poses[{indPose}].deformations".format(**dicVal), mi=True
+                    "{blurNode}.poses[{indPose}].deformations".format(**dicVal),
+                    mi=True,
                 )
                 if listDeformationsIndices:
                     for logicalFrameIndex in listDeformationsIndices:
@@ -1681,7 +1706,7 @@ class BlurDeformDialog(Dialog):
                         dicFrames[frame] = logicalFrameIndex
                     newFrameInd = max(listDeformationsIndices) + 1
 
-                for frame_tag in pose_tag.getchildren():
+                for frame_tag in list(iter(pose_tag)):
                     frame = float(frame_tag.get("frame"))
                     if frame not in dicFrames:
                         dicVal["frameInd"] = newFrameInd
@@ -1731,8 +1756,8 @@ class BlurDeformDialog(Dialog):
                                     b=True,
                                 )
 
-                    vector_tag = frame_tag.getchildren()[0]
-                    for vectag in vector_tag.getchildren():
+                    vector_tag = list(iter(frame_tag))[0]
+                    for vectag in list(iter(vector_tag)):
                         index = int(vectag.get("index"))
                         dicVal["vecInd"] = index
                         value = vectag.get("value")
@@ -1803,7 +1828,8 @@ class BlurDeformDialog(Dialog):
             pose_tag.setAttribute("poseMatrix", str(val))
 
             listDeformationsIndices = cmds.getAttr(
-                "{blurNode}.poses[{indPose}].deformations".format(**dicVal), mi=True
+                "{blurNode}.poses[{indPose}].deformations".format(**dicVal),
+                mi=True,
             )
             if inputPoseFramesIndices:
                 listDeformationsIndices = inputPoseFramesIndices[logicalInd]
@@ -2085,7 +2111,10 @@ class BlurDeformDialog(Dialog):
                                 theGeo = blurNodeIndexToMesh[int(indGeo)]
                                 theGeoShortName = theGeo.split(":")[-1]
                                 frameGeoName = "{}_{}_f{}_{}".format(
-                                    theBlurNode, thePose, int(frame), theGeoShortName
+                                    theBlurNode,
+                                    thePose,
+                                    int(frame),
+                                    theGeoShortName,
                                 )
                                 if withBlendShape:
                                     (deform,) = cmds.duplicate(theGeo, name="deform")
@@ -2097,7 +2126,10 @@ class BlurDeformDialog(Dialog):
                                     (newBS,) = cmds.blendShape(deform, frameDup)
                                     cmds.setAttr(newBS + ".w[0]", 1)
                                     cmds.delete(
-                                        cmds.ls(cmds.listHistory(newBS), type="tweak")
+                                        cmds.ls(
+                                            cmds.listHistory(newBS),
+                                            type="tweak",
+                                        )
                                     )
                                     cmds.delete(deform)
                                 else:
@@ -2121,13 +2153,19 @@ class BlurDeformDialog(Dialog):
                                     type="string",
                                 )
                                 cmds.addAttr(
-                                    frameDup, longName="sourceMesh", dataType="string"
+                                    frameDup,
+                                    longName="sourceMesh",
+                                    dataType="string",
                                 )
                                 cmds.setAttr(
-                                    frameDup + ".sourceMesh", edit=True, keyable=True
+                                    frameDup + ".sourceMesh",
+                                    edit=True,
+                                    keyable=True,
                                 )
                                 cmds.setAttr(
-                                    frameDup + ".sourceMesh", theGeo, type="string"
+                                    frameDup + ".sourceMesh",
+                                    theGeo,
+                                    type="string",
                                 )
                                 cmds.addAttr(
                                     frameDup,
@@ -2152,11 +2190,15 @@ class BlurDeformDialog(Dialog):
                         for att in ["gain", "offset", "frameEnabled"]:
                             if att == "frameEnabled":
                                 cmds.addAttr(
-                                    theFrameGrp, longName=att, attributeType="bool"
+                                    theFrameGrp,
+                                    longName=att,
+                                    attributeType="bool",
                                 )
                             else:
                                 cmds.addAttr(
-                                    theFrameGrp, longName=att, attributeType="float"
+                                    theFrameGrp,
+                                    longName=att,
+                                    attributeType="float",
                                 )
                             cmds.setAttr(
                                 theFrameGrp + "." + att, edit=True, keyable=True
@@ -2613,7 +2655,8 @@ class BlurDeformDialog(Dialog):
     def addtheCallBack(self):
         # print "ADD Call Back"
         self.playBackScript = cmds.scriptJob(
-            e=["playbackRangeChanged", self.blurTimeSlider.updateKeys], protected=True
+            e=["playbackRangeChanged", self.blurTimeSlider.updateKeys],
+            protected=True,
         )
         self.timeSliderChange = cmds.scriptJob(
             e=["timeChanged", self.selectProximityKey], protected=True

@@ -78,7 +78,8 @@ class StoreXml(Dialog):
                     "{blurNode}.poses[{indPose}].poseName".format(**dicVal)
                 )
                 listDeformationsIndices = cmds.getAttr(
-                    "{blurNode}.poses[{indPose}].deformations".format(**dicVal), mi=True
+                    "{blurNode}.poses[{indPose}].deformations".format(**dicVal),
+                    mi=True,
                 )
                 if not listDeformationsIndices:
                     continue
@@ -265,7 +266,8 @@ class StoreXml(Dialog):
                     poseEnabled,
                 )
                 cmds.setAttr(
-                    "{blurNode}.poses[{indPose}].poseGain".format(**dicVal), poseGain
+                    "{blurNode}.poses[{indPose}].poseGain".format(**dicVal),
+                    poseGain,
                 )
                 cmds.setAttr(
                     "{blurNode}.poses[{indPose}].poseOffset".format(**dicVal),
@@ -295,7 +297,8 @@ class StoreXml(Dialog):
             dicFrames = {}
             newFrameInd = 0
             listDeformationsIndices = cmds.getAttr(
-                "{blurNode}.poses[{indPose}].deformations".format(**dicVal), mi=True
+                "{blurNode}.poses[{indPose}].deformations".format(**dicVal),
+                mi=True,
             )
             if listDeformationsIndices:
                 for logicalFrameIndex in listDeformationsIndices:
@@ -369,11 +372,9 @@ class StoreXml(Dialog):
                         for indVtx in mvtIndices:
                             cmds.removeMultiInstance(frameName+".vectorMovements[{0}]".format (indVtx), b=True)
                     """
-                OLDvector_tag = frame_tag.find(
-                    "vectorMovements"
-                )  # frame_tag.getchildren ()[0]
+                OLDvector_tag = frame_tag.find("vectorMovements")
                 if OLDvector_tag is not None:
-                    for vectag in OLDvector_tag.getchildren():
+                    for vectag in list(iter(OLDvector_tag)):
                         index = int(vectag.get("index"))
                         dicVal["vecInd"] = index
                         value = vectag.get("value")
@@ -388,15 +389,13 @@ class StoreXml(Dialog):
                         )
 
                 # now find the new tags -----------------------
-                storedVectors_tag = frame_tag.find(
-                    "storedVectors"
-                )  # frame_tag.getchildren ()[0]
+                storedVectors_tag = frame_tag.find("storedVectors")
                 if storedVectors_tag is not None:
-                    for vector_tag in storedVectors_tag.getchildren():
+                    for vector_tag in list(iter(storedVectors_tag)):
                         indexGeo = vector_tag.get("indexGeo")
                         blurNodeIndex = dicIndexFileToIndexNode[indexGeo]
                         dicVal["indexGeo"] = blurNodeIndex
-                        for vectag in vector_tag.getchildren():
+                        for vectag in list(iter(vector_tag)):
                             index = int(vectag.get("index"))
                             dicVal["vecInd"] = index
                             value = vectag.get("value")
@@ -450,7 +449,9 @@ class StoreXml(Dialog):
                         if not pBar.update():
                             break
                         created_tag = self.parentWindow.storeInfoBlurSculpt(
-                            doc, blurNode, inputPoseFramesIndices=inputPoseFramesIndices
+                            doc,
+                            blurNode,
+                            inputPoseFramesIndices=inputPoseFramesIndices,
                         )
                         ALL_tag.appendChild(created_tag)
                 # created_tag = self.parentWindow.storeInfoBlurSculpt(doc, self.parentWindow.currentBlurNode,inputPoseFramesIndices = inputPoseFramesIndices )
@@ -488,7 +489,7 @@ class StoreXml(Dialog):
                 self.refreshTreeFromRoot(root)
 
     def refreshTreeFromRoot(self, root):
-        chds = root.getchildren()
+        chds = list(iter(root))
         geomsSelected = list(self.blurDic.keys())
         # geomsSelected = [ " - ".join(sorted(geoStr.split(" - "))) for geoStr in self.blurDic.keys () ]
         itemsToSelect = []
@@ -524,12 +525,12 @@ class StoreXml(Dialog):
                 # multi deal - with name END --------------
 
                 isGeomSelected = geomSorted in geomsSelected
-                for pose_tag in blurNode_tag.getchildren():
+                for pose_tag in list(iter(blurNode_tag)):
                     poseName = pose_tag.get("poseName")
                     toAdd = []
-                    for frame_tag in pose_tag.getchildren():
+                    for frame_tag in list(iter(pose_tag)):
                         frame = float(frame_tag.get("frame"))
-                        vector_tag = frame_tag.getchildren()[0]
+                        vector_tag = list(iter(frame_tag))[0]
 
                         frameItem = QtWidgets.QTreeWidgetItem()
 
@@ -544,7 +545,7 @@ class StoreXml(Dialog):
 
                         frameItem.setText(2, str(poseName))
                         frameItem.setText(3, str(frame))
-                        if not vector_tag.getchildren():
+                        if not list(iter(vector_tag)):
                             frameItem.setText(4, "\u00D8")
 
                         toAdd.append(("{0}_{1}".format(geom, frame), frameItem))
