@@ -60,31 +60,21 @@ void DisplayHelp()
 {
     MString help;
     help += "Flags:\n";
-    help += "-name (-n):            String     Name of the blurSclupt node to "
-            "create.\n";
-    help += "-query (-q):           N/A        Query mode.\n";
-    help += "-listPoses (-lp):      N/A        In query mode return the list "
-            "of poses stored\n";
-    help += "-listFrames (-lf):     N/A		 combine with poseName and "
-            "query mode\n";
-    help += "                                  return the list of frame used\n";
-    help +=
-        "-addPose (-ap):        N/A        Add a pose, use with poseName \n";
-    help += "-poseName (-pn):       String     the name of the pose we want to "
-            "add or edit\n";
-    help += "-poseTransform (-pt):  String     the transform node for the pose "
-            "to add\n";
-    help += "-addAtTime (-nbm)      String     the mesh target to add at the "
-            "currentTime\n";
-    help += "                                  needs pose name\n";
-    help += "-blurSculptName (-bn)  String     to Specify the sculptName for "
-            "addAtTime\n";
-    help += "-offset (-of)          Float      the offset distance to see if a "
-            "vertex is moved\n";
-    help +=
-        "                                  default 0.001 | used in addAtTime\n";
-    help += "-removeAtTime (-rmv):  N/A        Remove this pose at this time\n";
-    help += "-help (-h)             N/A        Display this text.\n";
+    help += "-name (-n):              String     Name of the blurSclupt node to create.\n";
+    help += "-query (-q):             N/A        Query mode.\n";
+    help += "-listPoses (-lp):        N/A        In query mode return the list of poses stored\n";
+    help += "-listFrames (-lf):       N/A        combine with poseName and query mode\n";
+    help += "                                        return the list of frame used\n";
+    help += "-addPose (-ap):          N/A        Add a pose, use with poseName \n";
+    help += "-poseName (-pn):         String     the name of the pose we want to add or edit\n";
+    help += "-poseTransform (-pt):    String     the transform node for the pose to add\n";
+    help += "-addAtTime (-nbm)        String     the mesh target to add at the currentTime\n";
+    help += "                                        needs pose name\n";
+    help += "-blurSculptName (-bn)    String     to Specify the sculptName for addAtTime\n";
+    help += "-offset (-of)            Float      the offset distance to see if a vertex is moved\n";
+    help += "                                        default 0.001 | used in addAtTime\n";
+    help += "-removeAtTime (-rmv):    N/A        Remove this pose at this time\n";
+    help += "-help (-h)               N/A        Display this text.\n";
     MGlobal::displayInfo(help);
 }
 
@@ -139,31 +129,23 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
         return MS::kSuccess;
     }
     if (command_ == kCommandAddPoseAtTime) {
-        // MGlobal::displayInfo(MString("command is :
-        // [kCommandAddPoseAtTime]"));
         status = GetLatestBlurSculptNode();
     }
     if (command_ == kCommandAddPose) {
-        // MGlobal::displayInfo(MString("command is : [kCommandAddPose]"));
         addAPose();
         return MS::kSuccess;
     }
     MFnDagNode fnMeshDriven(meshDeformed_);
 
     if (command_ == kCommandCreate) {
-        // MGlobal::displayInfo(MString("command is : [kCommandCreate]"));
 
         // Add the blurSculpt creation command to the modifier.
         MString command = "deformer -type blurSculpt -n \"" + name_ + "\"";
         command += " " + fnMeshDriven.partialPathName();
-        // MGlobal::displayInfo(MString("command is : [") + command +
-        // MString("]"));
 
         status = dgMod_.commandToExecute(command);
         status = dgMod_.doIt();
         status = GetLatestBlurSculptNode();
-        // setFaceVertexRelationShip();
-        // computeBarycenters();
 
         MFnDependencyNode fnBlurSculptNode(oBlurSculptNode_);
         setResult(fnBlurSculptNode.name());
@@ -174,8 +156,6 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
     if (command_ == kCommandAddPoseAtTime) {
         status = GetLatestBlurSculptNode();
         MFnDependencyNode fnBlurSculptNode(oBlurSculptNode_);
-        // MGlobal::displayInfo(MString("CHECK THAT EXISTS : [") +
-        // blurSculptNameInput_ + MString("]"));
         MGlobal::displayInfo(
             MString("Adding : [") + targetMeshAdd_ + MString("] to mesh [") +
             fnMeshDriven.partialPathName() + MString("]")
@@ -187,11 +167,6 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
         addAFrame();
     }
     else if (command_ == kCommandQuery) {
-        // MGlobal::displayInfo(MString("Query : getListPoses_  [") +
-        // getListPoses_ + MString("] ")); MGlobal::displayInfo(MString("
-        // getListFrames_  [") + getListFrames_ + MString("] ") );
-        // MGlobal::displayInfo(MString("        poseName_  [") + poseName_ +
-        // MString("] "));
         int nb = allPosesNames_.length();
         if (getListPoses_) {
             MString toDisplay("the poses names : ");
@@ -199,15 +174,11 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
 
             for (int i = 0; i < nb; i++) {
                 toDisplay += MString("[") + allPosesNames_[i] + MString("]");
-                // appendToResult(static_cast<int>(1));
                 appendToResult(allPosesNames_[i].asChar());
             }
-            // MGlobal::displayInfo(toDisplay);
         }
         if (getListFrames_) {
-            int poseIndex = getMStringIndex(
-                allPosesNames_, poseName_
-            ); // allPosesNames_.indexOf(poseName_);
+            int poseIndex = getMStringIndex(allPosesNames_, poseName_);
             if (poseIndex == -1) {
                 MGlobal::displayError(poseName_ + " is not a pose");
                 return MS::kFailure;
@@ -222,10 +193,8 @@ MStatus blurSculptCmd::doIt(const MArgList &args)
                         MString(" [") + allFramesFloats_[i] + MString("]");
                     appendToResult(static_cast<float>(allFramesFloats_[i]));
                 }
-                // MGlobal::displayInfo(toDisplay);
             }
         }
-        // cout << "Normal: "  << endl;
     }
     return MS::kSuccess;
 }
@@ -271,7 +240,6 @@ MStatus blurSculptCmd::GatherCommandArguments(const MArgList &args)
         MSelectionList selListA;
         MGlobal::getSelectionListByName(poseTransformStr_, selListA);
         selListA.getDependNode(0, poseTransform_);
-        // selList.getDagPath(0, poseTransform_);
         selListA.clear();
         connectTransform_ = true;
     }
@@ -315,11 +283,9 @@ MStatus blurSculptCmd::GetGeometryPaths()
         MObject inputNode;
         status = selectionList_.getDependNode(0, inputNode);
         CHECK_MSTATUS_AND_RETURN_IT(status);
-        // MGlobal::displayInfo("query get node");
         MFnDependencyNode inputNodeDep(inputNode, &status);
         if (inputNodeDep.typeId() == blurSculpt::id) {
             oBlurSculptNode_ = inputNode;
-            // MGlobal::displayInfo("query we have the blurSculpt");
             return MS::kSuccess;
         }
     }
@@ -334,58 +300,10 @@ MStatus blurSculptCmd::GetGeometryPaths()
             return MS::kFailure;
         }
     }
-    /*
-    meshDeformed_
 
-    if (command_ != kCommandCreate && meshDeformed_.(blurSculpt::id)) {
-
-    }
-    */
     return MS::kSuccess;
 }
-/*
-MStatus blurSculptCmd::setFaceVertexRelationShip() {
-        MStatus status;
-        MFnMesh fnDeformedMesh(meshDeformed_, &status);
-        int nbDeformedVtx = fnDeformedMesh.numVertices();
-        MItMeshVertex vertexIter(meshDeformed_);
 
-        MFnDependencyNode blurSculptDepNode(oBlurSculptNode_);
-        MPlug vertexFaceIndicesPlug =
-blurSculptDepNode.findPlug(blurSculpt::vertexFaceIndices); MPlug
-vertexVertexIndicesPlug =
-blurSculptDepNode.findPlug(blurSculpt::vertexVertexIndices);
-
-        MIntArray faces, edges, vertexList;
-        MPlug theVertexFace, theVertextVertex;
-
-        int vertexInd = 0;
-        for (; !vertexIter.isDone(); vertexIter.next()) {
-                vertexIter.getConnectedFaces(faces);
-                int faceIndex = faces[0];
-                vertexIter.getConnectedEdges(edges);
-                int2 vertexList;
-                int nextVertex;
-                fnDeformedMesh.getEdgeVertices(edges[0], vertexList);
-                if (vertexList[0] == vertexInd)
-                        nextVertex = vertexList[1];
-                else
-                        nextVertex = vertexList[0];
-
-                theVertexFace =
-vertexFaceIndicesPlug.elementByLogicalIndex(vertexInd, &status);
-                theVertexFace.setValue(faceIndex);
-
-                theVertextVertex =
-vertexVertexIndicesPlug.elementByLogicalIndex(vertexInd, &status);
-                theVertextVertex.setValue(nextVertex);
-
-                vertexInd++;
-        }
-        return MS::kSuccess;
-
-}
-*/
 MStatus blurSculptCmd::GetLatestBlurSculptNode()
 {
     MStatus status;
@@ -417,26 +335,6 @@ MStatus blurSculptCmd::GetLatestBlurSculptNode()
     }
     return MS::kFailure;
 }
-/*
-MStatus blurSculptCmd::GetPreDeformedMesh(MObject& blurSculptNode, MDagPath&
-pathMesh) { MStatus status;
-        /*
-        // Get the bind mesh connected to the message attribute of the wrap
-deformer MPlug plugBindMesh(oWrapNode, blurSculpt::aBindDriverGeo); MPlugArray
-plugs; plugBindMesh.connectedTo(plugs, true, false, &status);
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-        if (plugs.length() == 0) {
-                MGlobal::displayError("Unable to rebind.  No bind mesh is
-connected."); return MS::kFailure;
-        }
-        MObject oBindMesh = plugs[0].node();
-        status = MDagPath::getAPathTo(oBindMesh, pathBindMesh);
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-        */
-/*
-        return MS::kSuccess;
-}
-*/
 
 MStatus blurSculptCmd::getListPoses()
 {
@@ -446,33 +344,42 @@ MStatus blurSculptCmd::getListPoses()
 
     MFnDependencyNode blurSculptDepNode(oBlurSculptNode_);
     // get list of poses
+
+#if MAYA_API_VERSION > 201900
+    MPlug posesPlug =
+        blurSculptDepNode.findPlug(blurSculpt::poses, true, &status);
+#else
     MPlug posesPlug = blurSculptDepNode.findPlug(blurSculpt::poses, &status);
+#endif
+
     unsigned int nbPoses = posesPlug.numElements(&status);
 
-    // MIntArray iarrIndexes;	// array to hold each valid index number.
     unsigned nEle =
         posesPlug.getExistingArrayAttributeIndices(allPosesIndices_, &status);
 
-    // for (unsigned int element = 0; element < iarrIndexes.length(); element++)
     for (unsigned int element = 0; element < nbPoses; element++) {
         // do not use elementByLogicalIndex
         MPlug thePosePlug = posesPlug.elementByPhysicalIndex(element, &status);
         MPlug thePoseNamePlug = thePosePlug.child(blurSculpt::poseName);
         allPosesNames_.append(thePoseNamePlug.asString());
-        // unsigned int logicalIndex = newTargetPlug.logicalIndex(&stat);
     }
     return MS::kSuccess;
 }
 
 MStatus blurSculptCmd::getListFrames(int poseIndex)
 {
-    // MGlobal::displayInfo(MString("\n query list Poses: \n") );
-
     MStatus status;
     allFramesFloats_.clear();
 
     MFnDependencyNode blurSculptDepNode(oBlurSculptNode_);
+
+#if MAYA_API_VERSION > 201900
+    MPlug posesPlug =
+        blurSculptDepNode.findPlug(blurSculpt::poses, true, &status);
+#else
     MPlug posesPlug = blurSculptDepNode.findPlug(blurSculpt::poses, &status);
+#endif
+
     MPlug thePosePlug = posesPlug.elementByLogicalIndex(poseIndex, &status);
 
     MPlug deformationsPlug = thePosePlug.child(blurSculpt::deformations);
@@ -488,163 +395,27 @@ MStatus blurSculptCmd::getListFrames(int poseIndex)
         MPlug theFramePlug = theDeformPlug.child(blurSculpt::frame);
         allFramesFloats_.append(theFramePlug.asFloat());
     }
-    // MGlobal::displayInfo(MString("\n END query list Poses: \n"));
     return MS::kSuccess;
 }
 
-/*
-MStatus blurSculptCmd::computeBarycenters() {
-
-        //
-http://tech-artists.org/forum/showthread.php?4907-Maya-API-Vertex-and-Face-matrix-tangent-space
-
-        //This is not a very trivial thing. If you construct the tangents by
-yourself rather than having maya do it you'll be getting the most stable
-results. A clean UV map is a requirement however...
-        //Maya's mesh lacks a large amount of self awareness, most data is per
-face-vertex but there is no proper transitioning between vertex and
-face-vertices and not good way to get averaged data per vertex.
-        //Best is to use a MItMeshPolygon to iterate the polygons.
-        //MObject sInMeshAttr is the typed kMesh attribute, MDataBlock data is
-the io data as passed to compute
-
-        MStatus status;
-        MFnMesh fnDeformedMesh(meshDeformed_, &status);
-        MItMeshPolygon inMeshIter(meshDeformed_);
-
-        MFnDependencyNode blurSculptDepNode(oBlurSculptNode_);
-
-        int initialSize = fnDeformedMesh.numVertices();
-        MIntArray parsed (initialSize,-1);
-        //Then we need to iterate the individual triangles to get accurate
-tangent data
-
-        MPlug vertexFaceIndicesPlug =
-blurSculptDepNode.findPlug(blurSculpt::triangleFaceValues); MPlug
-vertexTriangleIndicesPlug =
-blurSculptDepNode.findPlug(blurSculpt::vertexTriangleIndices);
-
-        int triangleInd = 0;
-        MPlug trianglePlug, vertexTrianglePlug ,  vertex1Plug, vertex2Plug,
-vertex3Plug, uValuePlug, vValuePlug; MGlobal::displayInfo(MString("\n
-BaryCenters\n"));
-
-        for (int triangleInd = 0; !inMeshIter.isDone(); inMeshIter.next(),
-++triangleInd)
-        {
-                // get the trianglePlug
-                trianglePlug =
-vertexFaceIndicesPlug.elementByLogicalIndex(triangleInd, &status); vertex1Plug =
-trianglePlug.child(blurSculpt::vertex1); vertex2Plug =
-trianglePlug.child(blurSculpt::vertex2); vertex3Plug =
-trianglePlug.child(blurSculpt::vertex3); uValuePlug =
-trianglePlug.child(blurSculpt::uValue); vValuePlug =
-trianglePlug.child(blurSculpt::vValue);
-
-                MPointArray points;
-                MIntArray vertices;
-                inMeshIter.getTriangles(points, vertices);
-                MFloatArray u;
-                MFloatArray v;
-                inMeshIter.getUVs(u, v);
-                //Now that we know the points, uvs ad vertex indices per
-triangle vertex we can start getting the tangent per triangle
-                //and use that tangent for all vertices in the triangle. If a
-vertex is split and has multiple we can only use one of the
-                //uv-space-triangles to get a 3D tangent per vertex.
-                //
-                //This bit iterates each triangle of the poylgon's triangulation
-(3 points)
-                //and extracts the barycentric coordinates for the tangent.
-
-                for (unsigned int i = 0; i < vertices.length(); i += 3)
-                {
-                        // Taking UV coordinates [i-(i+2)] as our triangle and
-                        // the unitX (1,0) as point to get barycentric
-coordinates for
-                        // we can get the U direction in barycentric using the
-function
-                        // from this site:
-                        // http://www.blackpawn.com/texts/pointinpoly/
-                        double u02 = (u[i + 2] - u[i]);
-                        double v02 = (v[i + 2] - v[i]);
-                        double u01 = (u[i + 1] - u[i]);
-                        double v01 = (v[i + 1] - v[i]);
-                        double dot00 = u02 * u02 + v02 * v02;
-                        double dot01 = u02 * u01 + v02 * v01;
-                        double dot11 = u01 * u01 + v01 * v01;
-                        double d = dot00 * dot11 - dot01 * dot01;
-                        double u = 1.0;
-                        double v = 1.0;
-                        if (d != 0.0)
-                        {
-                                u = (dot11 * u02 - dot01 * u01) / d;
-                                v = (dot00 * u01 - dot01 * u02) / d;
-                        }
-
-                        uValuePlug.setDouble(u);
-                        vValuePlug.setDouble(v);
-                        vertex1Plug.setInt(vertices[0]);
-                        vertex2Plug.setInt(vertices[1]);
-                        vertex3Plug.setInt(vertices[2]);
-
-                        //Now to get the 3D tangent all we need to do is apply
-the barycentric coordinates to the 3D points : MVector tangent = points[i + 2] *
-u + points[i + 1] * v - points[i] * (u + v); MVector binormal, normal;
-                        //Next we iterate over the three vertices individually.
-                        //Here we use MFnMesh::getVertexNormal for the average
-normal (whether you want angle-weighted depends on what you're doing, I often
-don't use them).
-                        //Having the average normal and triangle tangent we can
-use the cross product for the binormal, cross the normal & binormal again to get
-a proper
-                        //perpendicular tangent, because the normal is average
-and the tangent is not the initial tangent was wrong.
-
-                        for (unsigned int j = i; j < i + 3; ++j) {
-                                int theVtx = vertices[j];
-                                if (parsed[theVtx] == -1) {
-                                        // store the triangle index
-                                        vertexTrianglePlug =
-vertexTriangleIndicesPlug.elementByLogicalIndex(theVtx, &status);
-                                        vertexTrianglePlug.setValue(triangleInd);
-                                        //fnDeformedMesh.getVertexNormal(vertices[j],
-false, normal);
-                                        //binormal = tangent ^ normal;
-                                        //binormal.normalize();
-                                        //tangent = binormal ^ normal;
-                                        //tangent.normalize();
-                                        // store the vertex
-                                        parsed.set (1, theVtx);
-                                }
-                                //the matrix produced
-                                //{ {tangent[0], tangent[1], tangent[2], 0},
-                                //{ binormal[0], binormal[1], binormal[2], 0 },
-                                //{ normal[0], normal[1], normal[2], 0 },
-                                //{ point[0], point[1], point[2], 0 }}
-
-                        }
-                }
-
-        }
-        return MS::kSuccess;
-}
-*/
 MStatus blurSculptCmd::addAPose()
 {
     MStatus status;
-    // MGlobal::displayInfo(MString("\n Function add A Pose : \n") + poseName_);
 
     MFnDependencyNode blurSculptDepNode(oBlurSculptNode_);
     // get list of poses
+#if MAYA_API_VERSION > 201900
+    MPlug posesPlug =
+        blurSculptDepNode.findPlug(blurSculpt::poses, true, &status);
+#else
     MPlug posesPlug = blurSculptDepNode.findPlug(blurSculpt::poses, &status);
+#endif
     // get the index of the poseName in the array
     int tmpInd = getMStringIndex(
         allPosesNames_, poseName_
     ); // allPosesNames_.indexOf(poseName_);
     int poseIndex;
 
-    // MGlobal::displayInfo(MString("indexOfPoseName : ") + poseIndex);
     bool doAddName = false;
     if (tmpInd == -1) { // if doesn't exists use new one
         poseIndex = GetFreeIndex(posesPlug);
@@ -670,12 +441,13 @@ MStatus blurSculptCmd::addAPose()
 
         if (connectTransform_) {
             // add the transform
-            // MDagModifier cmd;
-            // MGlobal::displayInfo(MString("connection of ") +
-            // poseTransformStr_);
             MFnDependencyNode poseTransformDep_(poseTransform_);
-            MPlug worldMatPlug = poseTransformDep_.findPlug("matrix");
 
+#if MAYA_API_VERSION > 201900
+            MPlug worldMatPlug = poseTransformDep_.findPlug("matrix", true);
+#else
+            MPlug worldMatPlug = poseTransformDep_.findPlug("matrix");
+#endif
             dgMod.connect(worldMatPlug, thePoseMatrixPlug);
             dgMod.doIt();
         }
@@ -686,7 +458,6 @@ MStatus blurSculptCmd::addAPose()
 MStatus blurSculptCmd::addAFrame()
 {
     MStatus status;
-    // MGlobal::displayInfo(MString("\nadd A Frame\n"));
 
     // get the meshes access
     MFnMesh fnDeformedMesh(meshDeformed_, &status);
@@ -694,7 +465,13 @@ MStatus blurSculptCmd::addAFrame()
     // get access to our node
     MFnDependencyNode blurSculptDepNode(oBlurSculptNode_);
     // get list of poses
+
+#if MAYA_API_VERSION > 201900
+    MPlug posesPlug =
+        blurSculptDepNode.findPlug(blurSculpt::poses, true, &status);
+#else
     MPlug posesPlug = blurSculptDepNode.findPlug(blurSculpt::poses, &status);
+#endif
 
     // get the nb of vertices
     int nbDeformedVtx = fnDeformedMesh.numVertices();
@@ -704,7 +481,6 @@ MStatus blurSculptCmd::addAFrame()
         MGlobal::displayError("not same number of vertices");
         return MS::kFailure;
     }
-    // MGlobal::displayInfo(MString("same nb vertices : ") + nbTargetVtx);
 
     // get the current time
     MTime currentFrame = MAnimControl::currentTime();
@@ -713,11 +489,6 @@ MStatus blurSculptCmd::addAFrame()
     MGlobal::displayInfo(MString("offset value : ") + aOffset_);
 
     // get the mode of deformation
-    /*
-    MPlug deformationTypePlug =
-    blurSculptDepNode.findPlug(blurSculpt::deformationType, &status); int
-    deformationType = deformationTypePlug.asInt();
-    */
     // get the index of the poseName in the array
     int tmpInd = getMStringIndex(
         allPosesNames_, poseName_
@@ -770,9 +541,6 @@ MStatus blurSculptCmd::addAFrame()
     if (deformationIndex == -1)
         deformationIndex = GetFreeIndex(theDeformationPlug);
 
-    // MGlobal::displayInfo(MString("deformationIndex : [") + deformationIndex +
-    // MString("] frame  : ") + currentFrameF);
-
     // get the new deformation
     MPlug deformPlug =
         theDeformationPlug.elementByLogicalIndex(deformationIndex, &status);
@@ -787,25 +555,14 @@ MStatus blurSculptCmd::addAFrame()
     MPlug theVectorsPlug =
         storedVectorsPlugIndex.child(blurSculpt::multiVectorMovements);
 
-    /*
-    if (status != MStatus::kSuccess) {
-            // create it
-    }
-    */
     // get the points from the meshes
     MPointArray deformedMeshVerticesPos;
-    // first set the gain at 0
-    // float prevGainValue = thePoseGainPlug.asFloat();
-    // thePoseGainPlug.setValue(0);
     poseEnabledPlug.setValue(false);
     fnDeformedMesh.getPoints(deformedMeshVerticesPos, MSpace::kObject);
 
-    // then reset the gain to its value
-    // thePoseGainPlug.setValue(prevGainValue);
-
     MPointArray targetMeshVerticesPos;
     fnTargetMesh.getPoints(targetMeshVerticesPos, MSpace::kObject);
-    // MItMeshPolygon faceIter(meshDeformed_);
+
     MPoint offsetPoint;
     MMatrix mMatrix;
 
@@ -820,14 +577,18 @@ MStatus blurSculptCmd::addAFrame()
     MIntArray smoothTangentFound(nbDeformedVtx, -1),
         smoothNormalFound(nbDeformedVtx, -1); // init at -1
 
-    // fnDeformedMesh.getVertexNormals(false, normals, MSpace::kWorld);
     std::vector<int> connectedVerticesFlat; // a flat array of all vertices
     std::vector<int>
         connectedVerticesIndicesFlat; // the indices of where to start in array
                                       // smooth the normals
+#if MAYA_API_VERSION > 201900
+    MPlug smoothNormalsPlug =
+        blurSculptDepNode.findPlug(blurSculpt::smoothNormals, true);
+#else
     MPlug smoothNormalsPlug =
         blurSculptDepNode.findPlug(blurSculpt::smoothNormals);
-    // bool useSmoothNormals = smoothNormalsPlug.asBool();
+#endif
+
     int smoothNormalsRepeat = smoothNormalsPlug.asInt();
 
     if (deformationType != 0) { // tangent and normals
@@ -851,23 +612,9 @@ MStatus blurSculptCmd::addAFrame()
                 connectedVerticesFlat.push_back(surroundingVertices[k]);
             sumConnectedVertices += nbConnVerts;
         }
-        /*
-        // now normals IDS -------------------
-        std::vector<int> normalVerticesFlat;// a flat array of all vertices
-        std::vector<int> normalVerticesIndicesFlat;// the indices of where to
-        start in array std::vector<int> tangentVerticesFlat;// a flat array of
-        all vertices std::vector<int> tangentVerticesIndicesFlat;// the indices
-        of where to start in array getVertsNormalsTangents(meshDeformed_.node(),
-        fnDeformedMesh, normalVerticesFlat, normalVerticesIndicesFlat,
-        tangentVerticesFlat, tangentVerticesIndicesFlat);
-        getTheNormalsAndTangents(fnDeformedMesh,
-                normalVerticesFlat, normalVerticesIndicesFlat,
-                tangentVerticesFlat, tangentVerticesIndicesFlat,
-                normals, tangents);
-        */
+
         fnDeformedMesh.getVertexNormals(false, normals, MSpace::kWorld);
 
-        // MItMeshVertex vertexIter(meshDeformed_);
         for (int theVertexNumber = 0; theVertexNumber < nbDeformedVtx;
              ++theVertexNumber) {
             MVector tangent =
@@ -884,13 +631,8 @@ MStatus blurSculptCmd::addAFrame()
                     connectedVerticesIndicesFlat
                 );
                 smoothNormalFound[theVertexNumber] = -1;
-                // getSmoothedVector(theVertexNumber, smoothTangentFound,
-                // tangents, smoothTangents, connectedVerticesFlat,
-                // connectedVerticesIndicesFlat);
-                // smoothTangentFound[theVertexNumber] = -1;
             }
             normals = smoothedNormals;
-            // tangents = smoothTangents;
         }
     }
 
@@ -903,25 +645,8 @@ MStatus blurSculptCmd::addAFrame()
             if (deformationType == 0) {
                 offsetPoint =
                     TV * matrixValueInverse - DFV * matrixValueInverse;
-                // offsetPoint = offsetPoint  * matrixValueInverse + matPoint;
             }
             else {
-                /*
-                if (useSmoothNormals) {
-                        getSmoothedVector(indVtx, smoothNormalFound, normals,
-                smoothedNormals, connectedVerticesFlat,
-                connectedVerticesIndicesFlat); normal = smoothedNormals[indVtx];
-                        //getSmoothedVector(indVtx, smoothTangentFound,
-                tangents, smoothTangents, connectedVerticesFlat,
-                connectedVerticesIndicesFlat);
-                        //tangent = smoothTangents[indVtx];
-                        tangent = tangents[indVtx];
-                }else{
-                        normal  = normals[indVtx];
-                        tangent = tangents[indVtx];
-                }
-                tangent.normalize();
-                */
                 normal = normals[indVtx];
                 tangent = tangents[indVtx];
                 CreateMatrix(zeroPt, normal, tangent, mMatrix);
@@ -931,7 +656,6 @@ MStatus blurSculptCmd::addAFrame()
             MObject vectorValues =
                 fnNumericData.create(MFnNumericData::k3Float, &status);
 
-            // MGlobal::displayInfo (MString("setting ") + offsetPoint.x);
             fnNumericData.setData3Float(
                 float(offsetPoint.x), float(offsetPoint.y), float(offsetPoint.z)
             );
@@ -942,7 +666,6 @@ MStatus blurSculptCmd::addAFrame()
             CHECK_MSTATUS_AND_RETURN_IT(status);
             status = dgMod.newPlugValue(VectorsPlugElement, vectorValues);
             CHECK_MSTATUS_AND_RETURN_IT(status);
-            // MGlobal::displayInfo(MString("vtx : ") + indVtx);
         }
     }
     poseEnabledPlug.setValue(true);

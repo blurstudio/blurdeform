@@ -94,34 +94,7 @@ class blurSculpt : public MPxDeformerNode {
     // create accessory nodes when the node is created
     //
     virtual MStatus accessoryNodeSetup(MDagModifier &cmd);
-    // MStatus setFrameVtx(MArrayDataHandle &deformationsHandle, MMatrix
-    // poseMat, MPoint matPoint, int deformType, int frameIndex, int theMult,
-    // float poseGainValue, float poseOffsetValue);
 
-    /*
-    void getSmoothedTangent (
-             int geoIndex,
-             int indVtx,
-             MFnMesh& fnInputMesh,
-             MIntArray& smoothTangentFound,
-             MFloatVectorArray& tangents,  MFloatVectorArray& smoothTangents  );
-
-    void getSmoothedNormal (
-             int geoIndex,
-             int indVtx,
-     MIntArray& smoothNormalFound,
-     MFloatVectorArray& normals, MFloatVectorArray& smoothedNormals );
-    */
-    /*
-    MVector getTheTangent(MPointArray& deformedMeshVerticesPos,
-            MArrayDataHandle& vertexTriangleIndicesData,
-            MArrayDataHandle& triangleFaceValuesData,
-            MArrayDataHandle& vertexVertexIndicesData,
-            MArrayDataHandle& vertexFaceIndicesData,
-            MFnMesh& fnInputMesh,
-            MItMeshVertex& meshVertIt,
-            int theVertexNumber, int deformType);
-    */
     MStatus sumDeformation(
         int geoIndex,
         MArrayDataHandle
@@ -151,20 +124,7 @@ class blurSculpt : public MPxDeformerNode {
     static MObject inTime;        // the inTime
     static MObject uvSet;         // the uv set
     static MObject smoothNormals; // the uv set
-    /*
-    static MObject vertexFaceIndices; // store the vertex face relationship
-    static MObject vertexVertexIndices; // store the vertex vertex relationship
 
-    // structure to save relationShips
-    static MObject vertexTriangleIndices; // store the vertex face relationship
-    static MObject triangleFaceValues; // array of all the triangles
-            static MObject vertex1; //
-            static MObject vertex2; //
-            static MObject vertex3; //
-            static MObject uValue; //
-            static MObject vValue; //
-
-    */
     static MObject useMultiVectorMovement; // using multiVector movement
     static MObject poses;                  // array of all the poses
 

@@ -13,12 +13,15 @@ BLUR_DEFORM_UI_ROOT = None
 
 
 def runBlurDeformUI():
+    from maya import cmds
     from .utils import rootWindow
-
     from .blurdeform import BlurDeformDialog
 
     global BLUR_DEFORM_UI
     global BLUR_DEFORM_UI_ROOT
+
+    if not cmds.pluginInfo("blurPostDeform", q=True, loaded=True):
+        cmds.loadPlugin("blurPostDeform")
 
     # make and show the UI
     BLUR_DEFORM_UI_ROOT = rootWindow()

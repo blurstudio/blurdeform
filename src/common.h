@@ -17,9 +17,9 @@
 #include <maya/MPointArray.h>
 #include <maya/MString.h>
 
+#include <maya/MFnMesh.h>
 #include <maya/MItMeshPolygon.h>
 #include <maya/MItMeshVertex.h>
-#include <maya/MfnMesh.h>
 #include <set>
 #include <vector>
 

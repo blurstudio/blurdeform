@@ -113,8 +113,6 @@ MStatus getTheNormalsAndTangents(
         return gettingTangentsStat;
 
     int nbVertices = fnInputMesh.numVertices();
-    // normals.setLength();
-    // tangents.setLength(nbVertices);
 
     int globalNormalIndex = 0;
     int globalTangentIndex = 0;
@@ -138,15 +136,7 @@ MStatus getTheNormalsAndTangents(
             else
                 sumNormals += theNormal;
         }
-        /*
-        //std::vector <int>normalsIds = normalsVertsIds[vertexInd];
-        for (int indNormal: normalsIds) {
-                MFloatVector theNormal(rawNormals[indNormal * 3],
-        rawNormals[indNormal * 3 + 1], rawNormals[indNormal * 3 + 2]); if
-        (firstNormal) { sumNormals = theNormal; firstNormal = false; }else
-                        sumNormals += theNormal;
-        }
-        */
+
         sumNormals.normalize();
         normals.set(sumNormals, vertexInd);
 
@@ -168,18 +158,6 @@ MStatus getTheNormalsAndTangents(
                 sumNormals += theTangent;
         }
 
-        /*
-        std::vector <int>tangentsIds = tangentsVertsIds[vertexInd];
-        for (int indTangent : tangentsIds) {
-                MFloatVector theTangent = rawTangents[indTangent];//
-        (rawTangents[indTangent * 3], rawTangents[indTangent * 3 + 1],
-        rawTangents[indTangent * 3 + 2]); if (firstTangent) { sumTangents =
-        theTangent; firstTangent = false;
-                }
-                else
-                        sumTangents += theTangent;
-        }
-        */
         sumTangents.normalize();
         tangents.set(sumTangents, vertexInd);
     }
@@ -192,14 +170,8 @@ void getSmoothedVector(
     std::vector<int> &connectedVerticesIndicesFlat
 )
 {
-    /*
-    auto myPair = connectedVerticesMultiFlat[geoIndex];
-    std::vector<int> connectedVerticesFlat = myPair.first;
-    std::vector<int> connectedVerticesIndicesFlat = myPair.second;
-    */
 
     MFloatVector sumVector;
-    //= Vectors[indVtx];
 
     int startIndx = connectedVerticesIndicesFlat[indVtx];
     int endIndx = connectedVerticesIndicesFlat[indVtx + 1];
@@ -470,7 +442,7 @@ MStatus CrawlSurface(
     MStatus status;
     distances[NORMALIZATION_INDEX] = 0.0; // -1 will represent our hit point.
     double minStartDistance = 999999.0;
-    unsigned int minStartIndex = 0;
+    int minStartIndex = 0;
 
     // Instead of a recursive function, which can get pretty slow, we'll use a
     // queue to keep track of where we are going and where we are coming from.

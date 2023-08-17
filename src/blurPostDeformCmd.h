@@ -43,8 +43,6 @@ class blurSculptCmd : public MPxCommand {
     };
     blurSculptCmd();
     virtual MStatus doIt(const MArgList &);
-    // virtual MStatus  undoIt();
-    // virtual MStatus  redoIt();
     virtual bool isUndoable() const;
     static void *creator();
     static MSyntax newSyntax();
@@ -102,11 +100,7 @@ class blurSculptCmd : public MPxCommand {
 
     MStatus GetGeometryPaths();
 
-    // MStatus computeBarycenters(); // adding a pose
-
     MStatus GetLatestBlurSculptNode();
-    // MStatus setFaceVertexRelationShip();
-    // MStatus GetPreDeformedMesh(MObject& blurSculptNode, MDagPath& pathMesh);
 
     MStatus addAPose();                   // adding a pose
     MStatus addAFrame();                  // adding a pose

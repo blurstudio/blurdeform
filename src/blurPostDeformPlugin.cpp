@@ -54,6 +54,11 @@ MStatus initializePlugin(MObject obj)
         "blurSculpt", blurSculpt::id, blurSculpt::creator,
         blurSculpt::initialize, MPxNode::kDeformerNode
     );
+    MGlobal::executeCommand(
+        "makePaintable -attrType multiFloat -sm deformer blurSculpt weights"
+    );
+
+    CHECK_MSTATUS_AND_RETURN_IT(result);
 
     result = plugin.registerCommand(
         blurSculptCmd::kName, blurSculptCmd::creator, blurSculptCmd::newSyntax
