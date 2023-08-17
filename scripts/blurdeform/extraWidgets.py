@@ -1,25 +1,25 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from maya import OpenMaya, OpenMayaMPx, OpenMayaUI, cmds, mel
-from Qt import QtWidgets, QtCore, QtGui
-import blurdev
-import sip
-import time, datetime
+from contextlib import contextmanager
+import time
+import datetime
+from .Qt import QtWidgets, QtCore, QtGui
+from .utils import rootWindow
+from maya import cmds, mel
 
 
-# create a QtObject for not using  sip.wrapinstance too much
 def getQTObject():
     if not cmds.window("tmpWidgetsWindow", q=True, ex=True):
         cmds.window("tmpWidgetsWindow")
         cmds.formLayout("qtLayoutObjects")
-    mayaWindow = blurdev.core.rootWindow()
-    for ind, el in enumerate(mayaWindow.children()):
+    mayaWindow = rootWindow()
+    for el in mayaWindow.children():
         try:
             title = el.windowTitle()
-            if title == "tmpWidgetsWindow":
-                break
-        except:
+        except Exception:
             continue
+        if title == "tmpWidgetsWindow":
+            break
     return el
 
 
@@ -43,21 +43,19 @@ class SettingVariable(object):
             self.variableHolder.__dict__[self.variableName] = self.valueOut
 
 
-class toggleBlockSignals(object):
-    def __init__(self, listWidgets, raise_error=True):
-        self.listWidgets = listWidgets
-
-    def __enter__(self):
-        for widg in self.listWidgets:
-            widg.blockSignals(True)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        for widg in self.listWidgets:
+@contextmanager
+def toggleBlockSignals(listWidgets, raise_error=True):
+    for widg in listWidgets:
+        widg.blockSignals(True)
+    try:
+        yield
+    finally:
+        for widg in listWidgets:
             widg.blockSignals(False)
 
 
 # spinner connected to an attribute
-class spinnerWidget(QtWidgets.QWidget):
+class SpinnerWidget(QtWidgets.QWidget):
     def offsetSpin_mousePressEvent(self, event):
         theAttrs = self.theAttr if isinstance(self.theAttr, list) else [self.theAttr]
         for theAttr in theAttrs:
@@ -87,12 +85,6 @@ class spinnerWidget(QtWidgets.QWidget):
         self.floatField = cmds.floatField(pre=precision, step=singleStep)
 
         self.theQtObject = theWindowForQtObjects.children()[-1]
-        """
-        if qtLayoutObject :
-            self.theQtObject = qtLayoutObject
-        else : 
-            self.theQtObject = toQtObject (self.floatField)
-        """
 
         self.theQtObject.setParent(self)
         self.theSpinner.lineEdit().hide()
@@ -109,7 +101,6 @@ class spinnerWidget(QtWidgets.QWidget):
         self.theQtObject.resize(wdth, self.height())
 
     def doConnectAttrSpinner(self, theAttr):
-        # print theAttr
         self.theAttr = theAttr
         if isinstance(self.theAttr, list):
             theAttr = self.theAttr[0]
@@ -134,7 +125,7 @@ class spinnerWidget(QtWidgets.QWidget):
         self.theQtObject.resize(wdth, self.height())
 
     def __init__(self, theAttr, singleStep=0.1, precision=2):
-        super(spinnerWidget, self).__init__()
+        super(SpinnerWidget, self).__init__()
         self.theAttr = theAttr
         self.theSpinner = QtWidgets.QDoubleSpinBox(self)
         self.theSpinner.setRange(-16777214, 16777215)
@@ -142,7 +133,6 @@ class spinnerWidget(QtWidgets.QWidget):
         self.theSpinner.setDecimals(precision)
 
         self.theSpinner.move(0, 0)
-        # self.setMinimumWidth(50)
         self.createWidget(singleStep=singleStep, precision=precision)
         self.doConnectAttrSpinner(theAttr)
 
@@ -159,10 +149,9 @@ class KeyFrameBtn(QtWidgets.QPushButton):
 
     def delete(self):
         self.theTimeSlider.listKeys.remove(self)
-        sip.delete(self)
+        self.deleteLater()
 
     def mouseMoveEvent(self, event):
-        # print "begin  mouseMove event"
         if self.moving:
             controlShitPressed = (
                 event.modifiers() == QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier
@@ -189,26 +178,15 @@ class KeyFrameBtn(QtWidgets.QPushButton):
                 self.theTime = int(theTime)
             self.updatePosition()
 
-        # print "end  mouseMove event"
         super(KeyFrameBtn, self).mouseMoveEvent(event)
 
     def mousePressEvent(self, event):
-        # print "begin  mousePress event"
         controlShitPressed = (
             event.modifiers() == QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier
         )
         controlPressed = (
             controlShitPressed or event.modifiers() == QtCore.Qt.ControlModifier
         )
-        shiftPressed = (
-            controlShitPressed
-            or event.modifiers() == QtCore.Qt.KeyboardModifiers(QtCore.Qt.ShiftModifier)
-        )
-
-        if shiftPressed:
-            offsetKey = 0.001
-        else:
-            offsetKey = 1
 
         self.duplicateMode = controlPressed
         self.moving = False
@@ -221,7 +199,6 @@ class KeyFrameBtn(QtWidgets.QPushButton):
             self.mainWindow.clickedItem = itemFrame
             self.mainWindow.popup_menu.fromFrame = True
             self.mainWindow.launchPopupMenu(event.globalPos(), 1)
-            # popup_menu.exec_
 
         elif event.button() == QtCore.Qt.LeftButton:
             self.moving = True
@@ -239,8 +216,6 @@ class KeyFrameBtn(QtWidgets.QPushButton):
 
             self.setStyleSheet(self.pressedColor)
 
-            # self.mainWindow.listKeysToMove = [(el, el.theTime) for el in self.theTimeSlider.getSortedListKeysObj() if el.checked ]
-
             self.start = startpb
             self.end = endpb
             self.startpb = startpb
@@ -251,22 +226,12 @@ class KeyFrameBtn(QtWidgets.QPushButton):
             frameIndex = float(self.theTime)
             cmds.currentTime(frameIndex)
 
-            # self.jumpToFrame()
-            """
-            super (KeyFrameBtn, self ).mousePressEvent (event)
-        else : 
-            super (KeyFrameBtn, self ).mousePressEvent (event)
-            """
-        # print "end mousePress event"
-
     def mouseReleaseEvent(self, event):
         super(KeyFrameBtn, self).mouseReleaseEvent(event)
         if self.moving and self.prevTime != self.theTime:
             if self.duplicateMode:
                 self.mainWindow.duplicateFrame(self.prevTime, self.theTime)
             else:
-                # poseName = cmds.getAttr (self.mainWindow.currentPose+".poseName")
-                # listDeformationsFrame = cmds.blurSculpt (self.mainWindow.currentBlurNode,query = True,listFrames = True, poseName=str(poseName) )
                 listDeformationsFrame = self.mainWindow.getListDeformationFrames()
 
                 if self.theTime in listDeformationsFrame:
@@ -306,7 +271,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
         self.checked = True
         cmds.evalDeferred(self.setFocus)
 
-        # select in parent :
+        # select in parent
         if selectInTree:
             with toggleBlockSignals([self.mainWindow.uiFramesTW]):
                 index = self.theTimeSlider.listKeys.index(self)
@@ -315,7 +280,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
         self.setStyleSheet(self.lightColor)
 
     def updatePosition(self, startPos=None, oneKeySize=None, start=None, end=None):
-        if start == None or end == None:
+        if start is None or end is None:
             start = cmds.playbackOptions(q=True, minTime=True)
             end = cmds.playbackOptions(q=True, maxTime=True)
 
@@ -326,7 +291,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
             return None
 
         if isVisible:
-            if oneKeySize == None or startPos == None:
+            if oneKeySize is None or startPos is None:
                 theTimeSlider_width = self.theTimeSlider.width()
                 startPos = theTimeSlider_width / 100.0 * 0.5
                 oneKeySize = (theTimeSlider_width - startPos * 2.0) / (
@@ -372,7 +337,6 @@ class KeyFrameBtn(QtWidgets.QPushButton):
 
 class TheTimeSlider(QtWidgets.QWidget):
     def deleteKeys(self):
-        # print "deleteKeys"
         toDelete = [] + self.listKeys
         for keyFrameBtn in toDelete:
             keyFrameBtn.delete()
@@ -387,7 +351,6 @@ class TheTimeSlider(QtWidgets.QWidget):
         return keyFrameBtn
 
     def updateKeys(self):
-        # print "updateKeys"
         listKeys = self.getSortedListKeysObj()
         listKeys.reverse()
         theTimeSlider_width = self.width()
@@ -412,13 +375,9 @@ class TheTimeSlider(QtWidgets.QWidget):
         self.mainWindow = mainWindow
 
         self.listKeys = []
-        # self.theTimePort = timePort.theTimePort
-        # self.mayaMainWindow = timePort.mayaWindowLayout
-
         theWindowForQtObjects = getQTObject()
         cmds.setParent("tmpWidgetsWindow|qtLayoutObjects")
-        # cmds.setParent ("MayaWindow|formLayout1|qtLayoutObjects")
-        cmdsTimePort = cmds.timePort(
+        cmds.timePort(
             "skinFixingTimePort",
             w=10,
             h=20,
@@ -427,7 +386,6 @@ class TheTimeSlider(QtWidgets.QWidget):
             enableBackground=True,
             bgc=[0.5, 0.5, 0.6],
         )
-        # self.theTimePort = gui_utils.qtLayoutObject.children() [-1]
         self.theTimePort = theWindowForQtObjects.children()[-1]
 
         self.theTimePort.setParent(self)
@@ -455,30 +413,6 @@ class WaitCursorCtxt(object):
             cmds.refresh()
 
 
-"""
-
-        theWindowForQtObjects = getQTObject ()
-
-        cmds.setParent ("tmpWidgetsWindow|qtLayoutObjects")        
-        # cmds.setParent ("MayaWindow|formLayout1|qtLayoutObjects")
-        cmdsTimePort = cmds.timePort( 'skinFixingTimePort', w=10, h=20, snap=True, globalTime=True,enableBackground=True, bgc = [.5,.5,.6])
-        # self.theTimePort = gui_utils.qtLayoutObject.children() [-1]                
-        self.theTimePort = theWindowForQtObjects .children() [-1]  
-
-        
-        self.theTimePort.setParent (self)
-"""
-
-
-"""
-from ilion_maya.gui_utils import lib as gui_utils
-import time
-nbValues = 100
-with gui_utils.MayaProgressBar(maxValue=nbValues,  status="test ...", frontWindow=True) as pBar:
-    for el in range (amountOfLoops):        
-        if not pBar.update() : break
-        time.sleep (.1)
-"""
 # maya progress bar
 class MayaProgressBar(object):
     def __init__(
@@ -535,7 +469,6 @@ class MayaProgressBar(object):
         for prg in self.progressBar:
             cmds.progressBar(prg, e=1, step=1)
         if cmds.progressBar(self.progressBar[0], query=True, isCancelled=True):
-            # raise RuntimeError("Process interrupted.")
             cmds.warning("Process interrupted!!")
             return False
         return True

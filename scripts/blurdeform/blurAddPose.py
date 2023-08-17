@@ -1,8 +1,13 @@
 from __future__ import absolute_import
-from blurdev.gui import Dialog
-from Qt import QtCore
-import blurdev
+from .Qt import QtCore, QtWidgets, QtCompat
 from maya import cmds
+from .utils import getUiFile
+
+try:
+    # Blur adds some extra signal handling to the top-level dialogs
+    from blurdev.gui import Dialog
+except ImportError:
+    Dialog = QtWidgets.QDialog
 
 
 class BlurAddPose(Dialog):
@@ -48,12 +53,8 @@ class BlurAddPose(Dialog):
     def __init__(self, parent=None):
         super(BlurAddPose, self).__init__(parent)
         # load the ui
-
-        import __main__
-
-        self.parentWindow = __main__.__dict__["blurDeformWindow"]
-        self.parentWindow.addPoseWin = self
-        blurdev.gui.loadUi(__file__, self)
+        self.parentWindow = parent
+        QtCompat.loadUi(getUiFile(__file__), self)
 
         self.uiTransformLE.setText("N/A")
         self.uiPoseNameLE.setText("newPose")

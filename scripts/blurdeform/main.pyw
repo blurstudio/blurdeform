@@ -15,13 +15,10 @@ if __name__ in ("__main__", "__builtin__"):
 
     blurdev.registerScriptPath(__file__)
 
-    # depending on our environment, Python initializes the script differently for scope, so try both methods:
-    # importing from a sub-module
-    try:
-        from blurdeform import BlurDeformDialog
+    import blurdeform
+    from blurdeform.blurdeform import BlurDeformDialog
 
-    # importing from the main package
-    except:
-        from blurdeform.blurdeform import BlurDeformDialog
+    dlg = blurdev.launch(BlurDeformDialog, instance=True)
 
-    blurdev.launch(BlurDeformDialog, instance=True)
+    blurdeform.BLUR_DEFORM_UI_ROOT = dlg.parent()
+    blurdeform.BLUR_DEFORM_UI = dlg

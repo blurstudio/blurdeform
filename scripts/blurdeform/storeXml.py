@@ -1,26 +1,22 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from blurdev.gui import Dialog
-from Qt import QtGui, QtWidgets, QtCore
 
-from . import extraWidgets
-import codecs
-import re
 import os
-import blurdev
+import re
+import codecs
 
 from maya import cmds
 from xml.dom import minidom
-import xml.etree.ElementTree as ET
-from six.moves import range
+from xml.etree import ElementTree
+
+from . import extraWidgets, filepickerwidget, utils
+from .Qt import QtGui, QtWidgets, QtCore, QtCompat
+
 import six
-from six.moves import map
-from six.moves import zip
+from six.moves import range, map, zip
 
 
-class StoreXml(Dialog):
-    storewin = True
-
+class StoreXml(QtWidgets.QDialog):
     def closeEvent(self, event):
         for el in self.parentWindow.toRestore:
             el.setEnabled(True)
@@ -92,7 +88,6 @@ class StoreXml(Dialog):
                             **dicVal
                         )
                     )
-                    # mvtIndices =  cmds.getAttr ("{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements".format (**dicVal), mi=True)
                     storedVectorsIndices = (
                         cmds.getAttr(
                             "{blurNode}.poses[{indPose}].deformations[{frameInd}].storedVectors".format(
@@ -132,7 +127,7 @@ class StoreXml(Dialog):
                     )
                     toAdd.append((frame, frameItem))
 
-                for frame, frameItem in sorted(toAdd):
+                for _frame, frameItem in sorted(toAdd):
                     self.uiAllFramesTW.addTopLevelItem(frameItem)
         self.setTreePretty()
 
@@ -140,7 +135,6 @@ class StoreXml(Dialog):
         self.uiAllFramesTW.setEnabled(True)
         for i in range(5):
             self.uiAllFramesTW.resizeColumnToContents(i)
-        vh = self.uiAllFramesTW.header()
         self.uiAllFramesTW.selectAll()
         for i in range(5):
             wdt = self.uiAllFramesTW.columnWidth(i)
@@ -159,7 +153,6 @@ class StoreXml(Dialog):
         self.close()
 
     def doRetrieveSelectionMulti(self):
-        print("multiRetrieve")
         selectedItems = self.uiAllFramesTW.selectedItems()
         dicBlurNodeData = {}
         for frameItem in selectedItems:
@@ -179,7 +172,6 @@ class StoreXml(Dialog):
                 else:
                     dicFrames[poseName].append(frame_tag)
 
-        # print "do retrieve done"
         with extraWidgets.WaitCursorCtxt():
             with extraWidgets.MayaProgressBar(
                 maxValue=len(dicBlurNodeData),
@@ -193,7 +185,6 @@ class StoreXml(Dialog):
                     self.retrieveblurXml(dicFrames, listPoses, theBlurNode=blurNode)
 
     def doRetrieveSelection(self):
-        print("singleRetrieve")
         selectedItems = self.uiAllFramesTW.selectedItems()
         dicFrames = {}
         listPoses = []
@@ -218,9 +209,7 @@ class StoreXml(Dialog):
         if not theBlurNode:
             theBlurNode = self.parentWindow.currentBlurNode
         dicVal = {"blurNode": theBlurNode}
-        print(theBlurNode)
 
-        # get an easy array to deal with indices ---------------------------------------
         blurNodeMeshToIndex, geomSorted = self.blurInfo[theBlurNode]
         fileIndexToMesh = self.blurFileInfo[geomSorted]
 
@@ -228,8 +217,6 @@ class StoreXml(Dialog):
         for indexGeo, meshName in six.iteritems(blurNodeMeshToIndex):
             indexFile = fileIndexToMesh[meshName]
             dicIndexFileToIndexNode[indexFile] = indexGeo
-        print(dicIndexFileToIndexNode)
-        # --------------------------------------------------------------------------------
 
         pses = cmds.getAttr(theBlurNode + ".poses", mi=True)
         dicPoses = {}
@@ -246,7 +233,6 @@ class StoreXml(Dialog):
 
         for pose_tag in listPoses:
             poseName = pose_tag.get("poseName")
-            print(poseName)
             # access the pose Index
             if poseName not in dicPoses:  # create it
                 dicVal["indPose"] = newInd
@@ -257,7 +243,6 @@ class StoreXml(Dialog):
                 )
                 dicPoses[poseName] = newInd
                 newInd += 1
-                # do the connection and type
                 poseEnabled = pose_tag.get("poseEnabled") == "True"
                 poseGain = float(pose_tag.get("poseGain"))
                 poseOffset = float(pose_tag.get("poseOffset"))
@@ -287,7 +272,7 @@ class StoreXml(Dialog):
                             "{blurNode}.poses[{indPose}].poseMatrix".format(**dicVal),
                             f=True,
                         )
-                    except:
+                    except Exception:
                         pass
             else:
                 dicVal["indPose"] = dicPoses[poseName]
@@ -365,13 +350,7 @@ class StoreXml(Dialog):
                                 frameName + ".storedVectors[{}]".format(indexGeo),
                                 b=True,
                             )
-                    """
-                    mvtIndices =  cmds.getAttr (frameName+".vectorMovements", mi=True)
-                    if mvtIndices: 
-                        mvtIndices = map (int, mvtIndices )
-                        for indVtx in mvtIndices:
-                            cmds.removeMultiInstance(frameName+".vectorMovements[{0}]".format (indVtx), b=True)
-                    """
+
                 OLDvector_tag = frame_tag.find("vectorMovements")
                 if OLDvector_tag is not None:
                     for vectag in list(iter(OLDvector_tag)):
@@ -379,7 +358,6 @@ class StoreXml(Dialog):
                         dicVal["vecInd"] = index
                         value = vectag.get("value")
                         floatVal = list(map(float, value[1:-1].split(", ")))
-                        # cmds.setAttr ("{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements[{vecInd}]".format (**dicVal), *floatVal)
                         # set to the index zero
                         cmds.setAttr(
                             "{blurNode}.poses[{indPose}].deformations[{frameInd}].storedVectors [0].multiVectorMovements[{vecInd}]".format(
@@ -388,7 +366,7 @@ class StoreXml(Dialog):
                             *floatVal
                         )
 
-                # now find the new tags -----------------------
+                # now find the new tags
                 storedVectors_tag = frame_tag.find("storedVectors")
                 if storedVectors_tag is not None:
                     for vector_tag in list(iter(storedVectors_tag)):
@@ -400,7 +378,6 @@ class StoreXml(Dialog):
                             dicVal["vecInd"] = index
                             value = vectag.get("value")
                             floatVal = list(map(float, value[1:-1].split(", ")))
-                            # cmds.setAttr ("{blurNode}.poses[{indPose}].deformations[{frameInd}].vectorMovements[{vecInd}]".format (**dicVal), *floatVal)
                             # set to the index zero
                             cmds.setAttr(
                                 "{blurNode}.poses[{indPose}].deformations[{frameInd}].storedVectors [{indexGeo}].multiVectorMovements[{vecInd}]".format(
@@ -411,19 +388,16 @@ class StoreXml(Dialog):
 
     def doStoreXml(self):
         dicBlurPoses = {}
-        # inputPoseFramesIndices = {}
         selectedItems = self.uiAllFramesTW.selectedItems()
         destinationFile = str(self.uiXmlStoreFile.filePath())
 
         if selectedItems:
             for frameItem in selectedItems:
                 fullName = str(frameItem.data(0, QtCore.Qt.UserRole))
-                print(fullName)
                 poseInd, frameInd = [
                     int(ind) for ind in re.findall(r"\b\d+\b", fullName)
                 ]
                 blurNode = fullName.split(".")[0]
-                print(fullName, blurNode)
 
                 if blurNode not in dicBlurPoses:
                     dicBlurPoses[blurNode] = {}
@@ -454,8 +428,6 @@ class StoreXml(Dialog):
                             inputPoseFramesIndices=inputPoseFramesIndices,
                         )
                         ALL_tag.appendChild(created_tag)
-                # created_tag = self.parentWindow.storeInfoBlurSculpt(doc, self.parentWindow.currentBlurNode,inputPoseFramesIndices = inputPoseFramesIndices )
-                # ALL_tag .appendChild (created_tag )
                 with codecs.open(destinationFile, "w", "utf-8") as out:
                     doc.writexml(out, indent="\n", addindent="\t", newl="")
 
@@ -467,9 +439,7 @@ class StoreXml(Dialog):
         self.blurInfo = {}
         self.blurFileInfo = {}
         for blurNode in selectedItems:
-            # geom = self.parentWindow.getGeom (blurNode, transform = True)
             geos, geoIndices = self.parentWindow.getGeom(blurNode, transform=True)
-            geom = " - ".join(geos)
             geomSorted = " - ".join(sorted(geos))
 
             indicesMeshes = sorted(zip(geos, geoIndices))
@@ -479,19 +449,15 @@ class StoreXml(Dialog):
             self.blurDic[geomSorted] = blurNode
             self.blurInfo[blurNode] = (blurNodeMeshToIndex, geomSorted)
 
-            # self.blurDic [geos] = geos
-            # self.blurDic [geoIndices] = geoIndices
-
         with extraWidgets.WaitCursorCtxt():
             if os.path.isfile(self.sourceFile):
-                tree = ET.parse(self.sourceFile)
+                tree = ElementTree.parse(self.sourceFile)
                 root = tree.getroot()
                 self.refreshTreeFromRoot(root)
 
     def refreshTreeFromRoot(self, root):
         chds = list(iter(root))
         geomsSelected = list(self.blurDic.keys())
-        # geomsSelected = [ " - ".join(sorted(geoStr.split(" - "))) for geoStr in self.blurDic.keys () ]
         itemsToSelect = []
         with extraWidgets.MayaProgressBar(
             maxValue=len(chds),
@@ -506,7 +472,6 @@ class StoreXml(Dialog):
                 self.progressBar.setValue(ind)
                 blurName = blurNode_tag.get("name")
 
-                # multi deal - with name --------------
                 geom = blurNode_tag.get("geom")
                 geomSplt = geom.split(" - ")
                 geomSorted = " - ".join(sorted(geomSplt))
@@ -522,7 +487,7 @@ class StoreXml(Dialog):
                 for ind, msh in indicesMeshes:
                     blurNodeIndexToMesh[ind] = msh
                 self.blurFileInfo[geomSorted] = blurNodeIndexToMesh
-                # multi deal - with name END --------------
+                # multi deal - with name END
 
                 isGeomSelected = geomSorted in geomsSelected
                 for pose_tag in list(iter(blurNode_tag)):
@@ -553,7 +518,7 @@ class StoreXml(Dialog):
                         frameItem.setData(0, QtCore.Qt.UserRole, frame_tag)
                         frameItem.setData(1, QtCore.Qt.UserRole, pose_tag)
 
-                    for geom_frame, frameItem in sorted(toAdd):
+                    for _geom_frame, frameItem in sorted(toAdd):
                         self.uiAllFramesTW.addTopLevelItem(frameItem)
 
         self.setTreePretty()
@@ -563,7 +528,6 @@ class StoreXml(Dialog):
             widget_item.setSelected(True)
 
     def fileIsPicked(self):
-        print("File is Picked")
         if not self.storewin:
             self.sourceFile = str(self.uiXmlStoreFile.filePath())
             self.readXmlFile()
@@ -573,13 +537,16 @@ class StoreXml(Dialog):
     # ------------------- INIT ----------------------------------------------------
     def __init__(self, parent=None):
         super(StoreXml, self).__init__(parent)
-        # load the ui
+        self.storewin = True
 
-        import __main__
+        # load the UI
+        self.parentWindow = parent
+        QtCompat.loadUi(utils.getUiFile(__file__), self)
 
-        self.parentWindow = __main__.__dict__["blurDeformWindow"]
-        blurdev.gui.loadUi(__file__, self)
-        self.parentWindow.saveXmlWin = self
+        self.uiXmlStoreFile = filepickerwidget.FilePickerWidget(self)
+        self.uiXmlStoreFile.setCaption("Store xml...")
+        self.uiXmlStoreFile.setFilters("XML Files (*.xml)")
+        self.uiStoreLAY.insertWidget(0, self.uiXmlStoreFile, 2)
 
         self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Store xml file")
@@ -595,4 +562,3 @@ class StoreXml(Dialog):
 
         self.yellowCol = QtGui.QColor(250, 250, 100)
         self.redCol = QtGui.QColor(250, 100, 100)
-        # filenameChanged

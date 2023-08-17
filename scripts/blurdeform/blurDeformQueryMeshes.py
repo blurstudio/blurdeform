@@ -1,28 +1,28 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from blurdev.gui import Dialog
-from Qt import QtCore, QtWidgets
-import blurdev
+from .Qt import QtCore, QtWidgets, QtCompat
 import difflib
 from maya import cmds
 from six.moves import range
 from six.moves import zip
+from .utils import getUiFile
+
+try:
+    # Blur adds some extra signal handling to the top-level dialogs
+    from blurdev.gui import Dialog
+except ImportError:
+    Dialog = QtWidgets.QDialog
 
 
-class blurDeformQueryMeshes(Dialog):
-
-    # ------------------- INIT ----------------------------------------------------
+class BlurDeformQueryMeshes(Dialog):
     def __init__(self, parent=None):
-        super(blurDeformQueryMeshes, self).__init__(parent)
+        super(BlurDeformQueryMeshes, self).__init__(parent)
         self.btnClicked = None
         self.listSelectedMeshes = []
 
         # load the ui
-        import __main__
-
-        self.parentWindow = __main__.__dict__["blurDeformWindow"]
-        self.parentWindow.blurDeformQueryMeshesWin = self
-        blurdev.gui.loadUi(__file__, self)
+        self.parentWindow = parent
+        QtCompat.loadUi(getUiFile(__file__), self)
 
         self.buttonBox.clicked.connect(self.infoClick)
         self.buttonBox.button(QtWidgets.QDialogButtonBox.Yes).setText("Add Selected")
@@ -30,15 +30,16 @@ class blurDeformQueryMeshes(Dialog):
 
         self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Pick meshes to Add")
-        # self.setModal (True)
-        lstMeshes, listToSelect, self.addComboMeshes = self.parentWindow.argsQueryMeshes
-        self.refreshWindow(lstMeshes, listToSelect)
+
+        self.addComboMeshes = None
 
     def closeEvent(self, event):
         self.listSelectedMeshes = []  # same as rejected
-        super(blurDeformQueryMeshes, self).closeEvent(event)
+        super(BlurDeformQueryMeshes, self).closeEvent(event)
 
-    def refreshWindow(self, lstMeshes, listToSelect):
+    def refreshWindow(self, lstMeshes, listToSelect, addComboMeshes):
+        self.addComboMeshes = addComboMeshes
+
         nbVtxOrig = []
         if self.addComboMeshes:
             self.uiMeshesLW.setHeaderHidden(False)
@@ -52,7 +53,6 @@ class blurDeformQueryMeshes(Dialog):
             self.uiMeshesLW.setColumnCount(1)
             origName_nbOrigVtx = []
 
-        # print lstMeshes, listToSelect
         self.listSelectedMeshes = []
         self.uiMeshesLW.clear()
         for ind, nm in enumerate(lstMeshes):
@@ -126,11 +126,9 @@ class blurDeformQueryMeshes(Dialog):
                 self.listSelectedMeshes = [
                     item.text(0) for item in self.uiMeshesLW.selectedItems()
                 ]
-        # print "ACCEPTED ", self.result()
 
-        super(blurDeformQueryMeshes, self).accept()
+        super(BlurDeformQueryMeshes, self).accept()
 
     def reject(self):
-        # print "REJECTED"
         self.listSelectedMeshes = []
-        super(blurDeformQueryMeshes, self).accept()
+        super(BlurDeformQueryMeshes, self).accept()
