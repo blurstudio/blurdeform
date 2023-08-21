@@ -2,18 +2,18 @@ name: build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
     tags:
       - v*
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 env:
   BUILD_TYPE: Release
 
 jobs:
   maya-win:
-    runs-on: windows-2019
+    runs-on: windows-latest
 
     strategy:
       # Without this, all containers stop if any fail
@@ -65,7 +65,7 @@ jobs:
           path: artifacts/plug-ins/blurPostDeform.mll
 
   maya-macos:
-    runs-on: macos-10.15
+    runs-on: macos-latest
 
     strategy:
       fail-fast: false
@@ -209,7 +209,8 @@ jobs:
           cp ./blurdeform.mod modules/
           mkdir -p modules/blurdeform/scripts
           cp -r ./scripts/blurdeform modules/blurdeform/scripts
-          zip -r blurPostDeform-${{env.RELEASE_VERSION}}.zip modules/
+          # zip -r blurPostDeform-${{env.RELEASE_VERSION}}.zip modules/
+          zip -r blurPostDeform.zip modules/
 
       - name: Upload distribution
         uses: "marvinpinto/action-automatic-releases@latest"
@@ -217,4 +218,4 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "latest"
           prerelease: false
-          files: blurdeform_module-*.zip
+          files: blurPostDeform.zip
