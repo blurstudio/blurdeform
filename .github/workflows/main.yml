@@ -57,9 +57,9 @@ jobs:
         run: |
           mkdir artifacts/windows-${{matrix.maya}}/plug-ins
           Copy-Item "./build/${{env.BUILD_TYPE}}/blurPostDeform.mll" -Destination "artifacts/windows-${{matrix.maya}}/plug-ins"
+          New-Item -Name artifacts/blurdeform.mod -ItemType File
 
       - name: Upload Artifacts
-        run: New-Item -Name artifacts/blurdeform.mod -ItemType File
         uses: actions/upload-artifact@v3
         with:
           name: blurdeform
@@ -112,9 +112,9 @@ jobs:
         run: |
           mkdir -p artifacts/mac-${{matrix.maya}}/plug-ins
           cp ./build/${{env.BUILD_TYPE}}/blurPostDeform.bundle artifacts/mac-${{matrix.maya}}/plug-ins
+          touch artifacts/blurdeform.mod
 
       - name: Upload Artifacts
-        run: touch artifacts/blurdeform.mod
         uses: actions/upload-artifact@v3
         with:
           name: blurdeform
@@ -163,9 +163,9 @@ jobs:
         run: |
           mkdir -p artifacts/linux-${{matrix.maya}}/plug-ins
           cp ./build/blurPostDeform.so artifacts/linux-${{matrix.maya}}/plug-ins
+          touch artifacts/blurdeform.mod
 
       - name: Upload Artifacts
-        run: touch artifacts/blurdeform.mod
         uses: actions/upload-artifact@v3
         with:
           name: blurdeform
