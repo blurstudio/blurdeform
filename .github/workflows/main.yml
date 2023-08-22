@@ -200,7 +200,7 @@ jobs:
 
       - name: Build Modfile
         run: |
-          python buildmodfile.py artifacts/blurdeform.mod --name blurdeform
+          python buildmodfile.py artifacts/blurdeform.mod --name blurdeform --path artifacts/blurdeform
 
       - name: Create distribution
         run: |
@@ -211,7 +211,9 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: blurdeform
-          path: artifacts/
+          path: |
+            artifacts/blurdeform/scripts
+            artifacts/blurdeform.mod
 
 
 #

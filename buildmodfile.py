@@ -5,19 +5,21 @@ from pathlib import Path, PurePosixPath
 
 def main(outpath, modname, modver, modpath):
     outpath = Path(outpath).absolute()
-    modpath = modpath or modname
 
-    basePath = outpath.parent
-    plugPaths = list(basePath.glob(str(Path('**') / 'plug-ins')))
+    basepath = outpath.parent
+    modpath = Path(modpath).absolute()
+    modrel = modpath.relative_to(basepath)
+
+    plugPaths = list(modpath.glob(str(Path('**') / 'plug-ins')))
 
     lines = []
     for pp in plugPaths:
-        rel = PurePosixPath(pp.relative_to(basePath))
+        rel = PurePosixPath(pp.relative_to(modpath))
         match = re.search(r"(?P<platform>win64|linux|mac)-(?P<year>\d+)", str(rel))
         if not match:
             continue
         plat, year = match['platform'], match['year']
-        lines.append(f"+ PLATFORM:{plat} MAYAVERSION:{year} {modname} {modver} {modpath}")
+        lines.append(f"+ PLATFORM:{plat} MAYAVERSION:{year} {modname} {modver} {modrel}")
         lines.append(f"plug-ins: {rel}")
         lines.append("")
 
@@ -33,7 +35,7 @@ def parse():
     parser.add_argument('outpath', help="The output filepath")
     parser.add_argument('-n', '--name', help="The name of the module", required=True)
     parser.add_argument('-v', '--version', help="The version of the module", default="1.0.0")
-    parser.add_argument('-p', '--path', help="The relative path to the module")
+    parser.add_argument('-p', '--path', help="The path to the module folder", required=True)
     args = parser.parse_args()
 
     main(args.outpath, args.name, args.version, args.path)
