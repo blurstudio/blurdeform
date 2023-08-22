@@ -160,8 +160,8 @@ jobs:
 
       - name: Repath Artifacts
         run: |
-          mkdir -p artifacts/blurdeform/linux-${{matrix.maya}}/plug-ins
-          cp ./build/blurPostDeform.so artifacts/blurdeform/linux-${{matrix.maya}}/plug-ins
+          mkdir -p artifacts/blurdeform/linux-${{matrix.year}}/plug-ins
+          cp ./build/blurPostDeform.so artifacts/blurdeform/linux-${{matrix.year}}/plug-ins
           touch artifacts/blurdeform.mod
 
       - name: Upload Artifacts
@@ -169,7 +169,7 @@ jobs:
         with:
           name: blurdeform
           path: |
-            artifacts/blurdeform/linux-${{matrix.maya}}/plug-ins/blurPostDeform.so
+            artifacts/blurdeform/linux-${{matrix.year}}/plug-ins/blurPostDeform.so
             artifacts/blurdeform.mod
 
 
