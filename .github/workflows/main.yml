@@ -235,11 +235,13 @@ jobs:
 
       - name: Create zipfile
         run: |
-          zip -r blurPostDeform-${{env.RELEASE_VERSION}}.zip artifacts/blurdeform
+          cd artifacts/blurdeform
+          zip -r blurPostDeform-${{env.RELEASE_VERSION}}.zip .
+          cd ../..
 
       - name: Upload distribution
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
-          files: blurPostDeform-*.zip
+          files: artifacts/blurdeform/blurPostDeform-*.zip
