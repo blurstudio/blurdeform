@@ -59,10 +59,13 @@ jobs:
           Copy-Item "./build/${{env.BUILD_TYPE}}/blurPostDeform.mll" -Destination "artifacts/windows-${{matrix.maya}}/plug-ins"
 
       - name: Upload Artifacts
+        run: New-Item -Name artifacts/blurdeform.mod -ItemType File
         uses: actions/upload-artifact@v3
         with:
           name: blurdeform
-          path: artifacts/windows-${{matrix.maya}}/plug-ins/blurPostDeform.mll
+          path: |
+            artifacts/windows-${{matrix.maya}}/plug-ins/blurPostDeform.mll
+            artifacts/blurdeform.mod
 
   maya-macos:
     runs-on: macos-latest
@@ -111,10 +114,13 @@ jobs:
           cp ./build/${{env.BUILD_TYPE}}/blurPostDeform.bundle artifacts/mac-${{matrix.maya}}/plug-ins
 
       - name: Upload Artifacts
+        run: touch artifacts/blurdeform.mod
         uses: actions/upload-artifact@v3
         with:
           name: blurdeform
-          path: artifacts/mac-${{matrix.maya}}/plug-ins/blurPostDeform.bundle
+          path: |
+            artifacts/mac-${{matrix.maya}}/plug-ins/blurPostDeform.bundle
+            artifacts/blurdeform.mod
 
 
   maya-linux:
@@ -159,10 +165,13 @@ jobs:
           cp ./build/blurPostDeform.so artifacts/linux-${{matrix.maya}}/plug-ins
 
       - name: Upload Artifacts
+        run: touch artifacts/blurdeform.mod
         uses: actions/upload-artifact@v3
         with:
           name: blurdeform
-          path: artifacts/linux-${{matrix.maya}}/plug-ins/blurPostDeform.so
+          path: |
+            artifacts/linux-${{matrix.maya}}/plug-ins/blurPostDeform.so
+            artifacts/blurdeform.mod
 
 #
 # Shipping
