@@ -100,7 +100,7 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '14'
+          xcode-version: '11.7'
 
       - name: Configure CMake
         run: |
