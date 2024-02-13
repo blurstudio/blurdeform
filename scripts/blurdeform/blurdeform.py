@@ -631,6 +631,11 @@ class BlurDeformDialog(Dialog):
         self.refresh(selectTime=True, selTime=cmds.currentTime(q=True))
 
     def doAddNewFrame(self, blurNode, currentGeom, targetMesh):
+        prt ,= cmds.listRelatives(targetMesh, parent=True, path=True)
+        cmds.parent(targetMesh, currentGeom)
+        cmds.makeIdentity(targetMesh, apply=True, translate=False, rotate=True, scale=False, normal=0, preserveNormals=True)
+        cmds.parent(targetMesh, prt)
+
         poseName = cmds.getAttr(self.currentPose + ".poseName")
 
         listDeformationsFrame = self.getListDeformationFrames()
@@ -1227,6 +1232,7 @@ class BlurDeformDialog(Dialog):
             nameSpaceSplit = geo.split(":")
             dupName = "EDIT_" + nameSpaceSplit[-1]
             dup = cmds.duplicate(geo, name=dupName)[0]
+            cmds.makeIdentity(dup, apply=True, translate=False, rotate=True, scale=False, normal=0, preserveNormals=True)
             cmds.addAttr(dup, longName="blurSculptNode", dataType="string")
             cmds.setAttr(dup + ".blurSculptNode", edit=True, keyable=True)
             cmds.setAttr(dup + ".blurSculptNode", self.currentBlurNode, type="string")
