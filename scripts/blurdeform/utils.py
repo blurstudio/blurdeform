@@ -150,13 +150,14 @@ def rootWindow():
 
 
 def launchDialog(parent, dialogClass, instance, modal=True, instanced=True):
-    if instanced:
-        if instance is None:
-            dlg = dialogClass(parent=parent)
-        else:
-            dlg = instance
-    else:
-        dlg = dialogClass(parent=parent)
+    # if instanced:
+    #     if instance is None:
+    #         dlg = dialogClass(parent=parent)
+    #     else:# fails
+    #         dlg = instance
+    # else:
+    #     dlg = dialogClass(parent=parent)
+    dlg = dialogClass(parent=parent)
 
     if modal:
         dlg.exec_()
