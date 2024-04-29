@@ -42,7 +42,7 @@ class BlurAddPose(Dialog):
         YPos = parentWindGeom.y() + 0.5 * (
             parentWindGeom.height() - currentGeom.height()
         )
-        self.move(XPos, YPos)
+        self.move(int(XPos), int(YPos))
         self.setEnabled(True)
         self.activateWindow()
         self.uiPoseNameLE.setFocus()

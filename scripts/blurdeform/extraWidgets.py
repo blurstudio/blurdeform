@@ -299,11 +299,11 @@ class KeyFrameBtn(QtWidgets.QPushButton):
                 )
 
             Xpos = (self.theTime - start) * oneKeySize + startPos
-            self.move(Xpos, 15)
+            self.move(int(Xpos), 15)
             if oneKeySize < 6:
                 self.resize(6, 40)
             else:
-                self.resize(oneKeySize, 40)
+                self.resize(int(oneKeySize), 40)
 
     def __init__(self, theTime, theTimeSlider, isEmpty=False):
         super(KeyFrameBtn, self).__init__(None)
