@@ -15,7 +15,7 @@ except ImportError:
 
 
 class BlurDeformQueryMeshes(Dialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, lstMeshes=None, listToSelect=None, addComboMeshes=None):
         super(BlurDeformQueryMeshes, self).__init__(parent)
         self.btnClicked = None
         self.listSelectedMeshes = []
@@ -28,10 +28,12 @@ class BlurDeformQueryMeshes(Dialog):
         self.buttonBox.button(QtWidgets.QDialogButtonBox.Yes).setText("Add Selected")
         self.buttonBox.button(QtWidgets.QDialogButtonBox.YesToAll).setText("Add All")
 
-        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.WindowStaysOnTopHint)
+        # self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.WindowStaysOnTopHint)
+        #self.setWindowModality
         self.setWindowTitle("Pick meshes to Add")
 
         self.addComboMeshes = None
+        self.refreshWindow(lstMeshes, listToSelect, addComboMeshes)
 
     def closeEvent(self, event):
         self.listSelectedMeshes = []  # same as rejected
@@ -56,12 +58,13 @@ class BlurDeformQueryMeshes(Dialog):
         self.listSelectedMeshes = []
         self.uiMeshesLW.clear()
         for ind, nm in enumerate(lstMeshes):
-            item = QtWidgets.QTreeWidgetItem()
+            print(nm)
+            item = QtWidgets.QTreeWidgetItem(self.uiMeshesLW)
             item.setText(0, nm)
             item.setFlags(
                 item.flags() | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsUserCheckable
             )
-            self.uiMeshesLW.addTopLevelItem(item)
+            # self.uiMeshesLW.addTopLevelItem(item)
 
             if self.addComboMeshes:
                 cb = QtWidgets.QComboBox(self)
