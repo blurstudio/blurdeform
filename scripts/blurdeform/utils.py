@@ -149,7 +149,7 @@ def rootWindow():
     return window
 
 
-def launchDialog(parent, dialogClass, instance, modal=True, instanced=True):
+def launchDialog(parent, dialogClass, instance, modal=True, instanced=True, **kwargs):
     # if instanced:
     #     if instance is None:
     #         dlg = dialogClass(parent=parent)
@@ -157,7 +157,7 @@ def launchDialog(parent, dialogClass, instance, modal=True, instanced=True):
     #         dlg = instance
     # else:
     #     dlg = dialogClass(parent=parent)
-    dlg = dialogClass(parent=parent)
+    dlg = dialogClass(parent=parent, **kwargs)
 
     if modal:
         dlg.exec_()

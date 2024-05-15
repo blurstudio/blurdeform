@@ -71,3 +71,5 @@ class BlurAddPose(Dialog):
 
         self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Add New Pose")
+
+        self.refreshWindow()

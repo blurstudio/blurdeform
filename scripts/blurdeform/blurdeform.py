@@ -88,7 +88,7 @@ def getVertsSelection():
             continue
         transform = dagPath.transform()
         depNode = OpenMaya.MFnDependencyNode(transform)
-        depNode_name = depNode.name()
+        depNode_name = cmds.ls(depNode.uniqueName())[0]
 
         if component.isNull():
             iterSel.next()
@@ -149,10 +149,14 @@ class BlurDeformDialog(Dialog):
                 self.blurDeformQueryMeshesWin,
                 modal=True,
                 instanced=True,
+                lstMeshes=self.currentGeometries,
+                listToSelect=self.currentGeometries,
+                addComboMeshes=None
+
             )
-            self.blurDeformQueryMeshesWin.refreshWindow(
-                self.currentGeometries, self.currentGeometries, None
-            )
+            # self.blurDeformQueryMeshesWin.refreshWindow(
+            #     self.currentGeometries, self.currentGeometries, None
+            # )
 
             selectedMeshes = self.blurDeformQueryMeshesWin.listSelectedMeshes
             indicesMeshes = list(
@@ -351,6 +355,7 @@ class BlurDeformDialog(Dialog):
     def removeSelectedVerticesFromFrame(self):
         selectedVertices = getVertsSelection()
         if not selectedVertices:
+            cmds.confirmDialog(t="remove verts", m="select some vertices\nFailed")
             return
         # get an easy array to deal with
         indicesMeshes = sorted(
@@ -567,12 +572,15 @@ class BlurDeformDialog(Dialog):
                         self,
                         blurDeformQueryMeshes.BlurDeformQueryMeshes,
                         self.blurDeformQueryMeshesWin,
-                        modal=True,
-                        instanced=True,
+                        modal=False,
+                        instanced=False,
+                        lstMeshes=listResForDuplicate,
+                        listToSelect=objsWithAttributes,
+                        addComboMeshes=None
                     )
-                    self.blurDeformQueryMeshesWin.refreshWindow(
-                        listResForDuplicate, objsWithAttributes, None
-                    )
+                    # self.blurDeformQueryMeshesWin.refreshWindow(
+                    #     listResForDuplicate, objsWithAttributes, None
+                    # )
                     objsToAdd = self.blurDeformQueryMeshesWin.listSelectedMeshes
                 else:
                     objsToAdd = objsWithAttributes
@@ -592,10 +600,14 @@ class BlurDeformDialog(Dialog):
                         self.blurDeformQueryMeshesWin,
                         modal=True,
                         instanced=True,
+                        lstMeshes=selection,
+                        listToSelect=selection,
+                        addComboMeshes=self.currentGeometries
+
                     )
-                    self.blurDeformQueryMeshesWin.refreshWindow(
-                        selection, selection, self.currentGeometries
-                    )
+                    # self.blurDeformQueryMeshesWin.refreshWindow(
+                    #     selection, selection, self.currentGeometries
+                    # )
                     selectedMeshes = self.blurDeformQueryMeshesWin.listSelectedMeshes
                     for geo, sourceMesh in selectedMeshes:
                         self.doAddNewFrame(self.currentBlurNode, sourceMesh, geo)
@@ -631,10 +643,14 @@ class BlurDeformDialog(Dialog):
         self.refresh(selectTime=True, selTime=cmds.currentTime(q=True))
 
     def doAddNewFrame(self, blurNode, currentGeom, targetMesh):
-        prt ,= cmds.listRelatives(targetMesh, parent=True, path=True)
+        # print(blurNode, currentGeom, targetMesh)
+        prt ,= cmds.listRelatives(targetMesh, parent=True, path=True) or [None]
         cmds.parent(targetMesh, currentGeom)
         cmds.makeIdentity(targetMesh, apply=True, translate=False, rotate=True, scale=False, normal=0, preserveNormals=True)
-        cmds.parent(targetMesh, prt)
+        if prt is not None:
+            cmds.parent(targetMesh, prt)
+        else:
+            cmds.parent(targetMesh, w=True)
 
         poseName = cmds.getAttr(self.currentPose + ".poseName")
 
@@ -2249,7 +2265,7 @@ class BlurDeformDialog(Dialog):
         indexToMesh = {}
         for ind, msh in indicesMeshes:
             indexToMesh[ind] = msh
-
+        toHilite=[]
         for ind in storedVectorsIndices:
             if ind in indexToMesh:
                 vertices = cmds.getAttr(
@@ -2257,14 +2273,17 @@ class BlurDeformDialog(Dialog):
                     + ".storedVectors[{}].multiVectorMovements".format(ind),
                     mi=True,
                 )
-                toSelect += [
-                    "{}.vtx[{}]".format(indexToMesh[ind], el)
-                    for el in orderMelList(vertices)
-                ]
+                if vertices:
+                    toSelect += [
+                        "{}.vtx[{}]".format(indexToMesh[ind], el)
+                        for el in orderMelList(vertices)
+                    ]
+                    toHilite.append(indexToMesh[ind])
 
         if toSelect:
             with extraWidgets.WaitCursorCtxt():
                 cmds.select(toSelect)
+                cmds.hilite(toHilite)
         else:
             cmds.select(clear=True)
 
@@ -2286,7 +2305,7 @@ class BlurDeformDialog(Dialog):
             modal=False,
             instanced=True,
         )
-        self.addPoseWin.refreshWindow()
+        #self.addPoseWin.refreshWindow()
 
     def callSaveXml(self):
         self.toRestore = []
