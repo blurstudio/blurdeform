@@ -2,6 +2,7 @@
 #include "blurPostDeformNode.h"
 
 #include <maya/MFnPlugin.h>
+#include "version.h"
 
 //-
 // ==========================================================================
@@ -49,7 +50,7 @@
 MStatus initializePlugin(MObject obj)
 {
     MStatus result;
-    MFnPlugin plugin(obj, "blur studios", "1.0", "Any");
+    MFnPlugin plugin(obj, "Blur Studio", VERSION_STRING, "Any");
     result = plugin.registerNode(
         "blurSculpt", blurSculpt::id, blurSculpt::creator,
         blurSculpt::initialize, MPxNode::kDeformerNode

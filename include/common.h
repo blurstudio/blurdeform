@@ -224,54 +224,6 @@ void GetValidUp(
     MVector &up
 );
 
-template <typename T> struct ThreadData {
-    unsigned int start;
-    unsigned int end;
-    unsigned int numTasks;
-    double *alignedStorage;
-    T *pData;
-
-    ThreadData()
-    {
-        alignedStorage = (double *)_mm_malloc(4 * sizeof(double), 256);
-    }
-    ~ThreadData() { _mm_free(alignedStorage); }
-};
-
-/**
-  Creates the data stuctures that will be sent to each thread.  Divides the
-  vertices into discrete chunks to be evaluated in the threads.
-  @param[in] taskCount The number of individual tasks we want to divide the
-  calculation into.
-  @param[in] elementCount The number of vertices or elements to be divided up.
-  @param[in] taskData The TaskData or BindData object.
-  @param[out] threadData The array of ThreadData objects.  It is assumed the
-  array is of size taskCount.
-*/
-template <typename T>
-void CreateThreadData(
-    int taskCount, unsigned int elementCount, T *taskData,
-    ThreadData<T> *threadData
-)
-{
-    unsigned int taskLength = (elementCount + taskCount - 1) / taskCount;
-    unsigned int start = 0;
-    unsigned int end = taskLength;
-    int lastTask = taskCount - 1;
-    for (int i = 0; i < taskCount; i++) {
-        if (i == lastTask) {
-            end = elementCount;
-        }
-        threadData[i].start = start;
-        threadData[i].end = end;
-        threadData[i].numTasks = taskCount;
-        threadData[i].pData = taskData;
-
-        start += taskLength;
-        end += taskLength;
-    }
-}
-
 #ifdef __AVX__
 /**
   Calculates 4 dot products at once.
