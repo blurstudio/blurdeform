@@ -643,9 +643,11 @@ class BlurDeformDialog(Dialog):
         self.refresh(selectTime=True, selTime=cmds.currentTime(q=True))
 
     def doAddNewFrame(self, blurNode, currentGeom, targetMesh):
-        # print(blurNode, currentGeom, targetMesh)
+        print(blurNode, currentGeom, targetMesh)
         prt ,= cmds.listRelatives(targetMesh, parent=True, path=True) or [None]
-        cmds.parent(targetMesh, currentGeom)
+        [cmds.setAttr(targetMesh+"."+att+axis, l=False) for att in "trs" for axis in " xyz"]
+        if prt != currentGeom:
+            cmds.parent(targetMesh, currentGeom)
         cmds.makeIdentity(targetMesh, apply=True, translate=False, rotate=True, scale=False, normal=0, preserveNormals=True)
         if prt is not None:
             cmds.parent(targetMesh, prt)
@@ -1633,6 +1635,8 @@ class BlurDeformDialog(Dialog):
         geomIndices = " - ".join(map(str, geoIndices))
         blurNode_tag.setAttribute("geom", geom)
         blurNode_tag.setAttribute("geomIndices", geomIndices)
+        nbVertices = cmds.polyEvaluate(geom, v=True)
+        blurNode_tag.setAttribute("nbVertices", nbVertices)
 
         listPoses = cmds.blurSculpt(blurNode, query=True, listPoses=True)
         if not listPoses:

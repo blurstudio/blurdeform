@@ -211,11 +211,23 @@ class StoreXml(QtWidgets.QDialog):
         dicVal = {"blurNode": theBlurNode}
 
         blurNodeMeshToIndex, geomSorted = self.blurInfo[theBlurNode]
-        fileIndexToMesh = self.blurFileInfo[geomSorted]
+        if geomSorted not in self.blurFileInfo:
+            # try the first element
+            currentNbVerts = cmds.polyEvaluate(geomSorted, v=True)
+            if currentNbVerts in self.vertsToName:
+                storedName = self.vertsToName[currentNbVerts]
+                fileIndexToMesh = self.blurFileInfo[storedName]
+                print("matching vertices found {}".format(currentNbVerts))
+            else:
+                storedName, fileIndexToMesh = next(iter(self.blurFileInfo.items()))
+
+        else:
+            fileIndexToMesh = self.blurFileInfo[geomSorted]
+            storedName = geomSorted
 
         dicIndexFileToIndexNode = {}
         for indexGeo, meshName in six.iteritems(blurNodeMeshToIndex):
-            indexFile = fileIndexToMesh[meshName]
+            indexFile = fileIndexToMesh[meshName if meshName in fileIndexToMesh else storedName]
             dicIndexFileToIndexNode[indexFile] = indexGeo
 
         pses = cmds.getAttr(theBlurNode + ".poses", mi=True)
@@ -438,6 +450,7 @@ class StoreXml(QtWidgets.QDialog):
         self.blurDic = {}
         self.blurInfo = {}
         self.blurFileInfo = {}
+        self.vertsToName = {}
         for blurNode in selectedItems:
             geos, geoIndices = self.parentWindow.getGeom(blurNode, transform=True)
             geomSorted = " - ".join(sorted(geos))
@@ -488,6 +501,10 @@ class StoreXml(QtWidgets.QDialog):
                     blurNodeIndexToMesh[ind] = msh
                 self.blurFileInfo[geomSorted] = blurNodeIndexToMesh
                 # multi deal - with name END
+
+                if "nbVertices" in blurNode_tag.attrib:
+                    nbVertices = blurNode_tag.get("nbVertices")
+                    self.vertsToName[int(nbVertices)] = geomSorted
 
                 isGeomSelected = geomSorted in geomsSelected
                 for pose_tag in list(iter(blurNode_tag)):
