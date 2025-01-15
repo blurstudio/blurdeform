@@ -20,8 +20,8 @@ def runBlurDeformUI():
     global BLUR_DEFORM_UI
     global BLUR_DEFORM_UI_ROOT
 
-    if not cmds.pluginInfo("blurPostDeform", q=True, loaded=True):
-        cmds.loadPlugin("blurPostDeform")
+    if not cmds.pluginInfo("blurdeform", q=True, loaded=True):
+        cmds.loadPlugin("blurdeform")
 
     # make and show the UI
     BLUR_DEFORM_UI_ROOT = rootWindow()

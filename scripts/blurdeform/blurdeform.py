@@ -2523,8 +2523,8 @@ class BlurDeformDialog(Dialog):
         cmds.scriptJob(kill=self.timeSliderChange, force=True)
 
     def refreshForShow(self):
-        if not cmds.pluginInfo("blurPostDeform", q=True, loaded=True):
-            cmds.loadPlugin("blurPostDeform")
+        if not cmds.pluginInfo("blurdeform", q=True, loaded=True):
+            cmds.loadPlugin("blurdeform")
 
         if self.addTimeLine:
             self.addtheCallBack()
