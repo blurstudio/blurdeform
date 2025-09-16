@@ -10,7 +10,7 @@ from xml.dom import minidom
 from xml.etree import ElementTree
 
 from . import extraWidgets, filepickerwidget, utils
-from .Qt import QtGui, QtWidgets, QtCore, QtCompat
+from Qt import QtGui, QtWidgets, QtCore, QtCompat
 
 import six
 from six.moves import range, map, zip
@@ -116,11 +116,11 @@ class StoreXml(QtWidgets.QDialog):
                     frameItem.setText(3, str(frame))
                     if not vectorMovementsIndices:
                         frameItem.setText(4, "\u00D8")
-                        frameItem.setTextAlignment(4, QtCore.Qt.AlignCenter)
+                        frameItem.setTextAlignment(4, QtCore.Qt.AlignmentFlag.AlignCenter)
 
                     frameItem.setData(
                         0,
-                        QtCore.Qt.UserRole,
+                        QtCore.Qt.ItemDataRole.UserRole,
                         "{blurNode}.poses[{indPose}].deformations[{frameInd}]".format(
                             **dicVal
                         ),
@@ -156,8 +156,8 @@ class StoreXml(QtWidgets.QDialog):
         selectedItems = self.uiAllFramesTW.selectedItems()
         dicBlurNodeData = {}
         for frameItem in selectedItems:
-            frame_tag = frameItem.data(0, QtCore.Qt.UserRole)
-            pose_tag = frameItem.data(1, QtCore.Qt.UserRole)
+            frame_tag = frameItem.data(0, QtCore.Qt.ItemDataRole.UserRole)
+            pose_tag = frameItem.data(1, QtCore.Qt.ItemDataRole.UserRole)
             geom = frameItem.text(1)
             if geom in self.blurDic:
                 inSceneBlurNode = self.blurDic[geom]
@@ -189,8 +189,8 @@ class StoreXml(QtWidgets.QDialog):
         dicFrames = {}
         listPoses = []
         for frameItem in selectedItems:
-            frame_tag = frameItem.data(0, QtCore.Qt.UserRole)
-            pose_tag = frameItem.data(1, QtCore.Qt.UserRole)
+            frame_tag = frameItem.data(0, QtCore.Qt.ItemDataRole.UserRole)
+            pose_tag = frameItem.data(1, QtCore.Qt.ItemDataRole.UserRole)
 
             poseName = pose_tag.get("poseName")
 
@@ -405,7 +405,7 @@ class StoreXml(QtWidgets.QDialog):
 
         if selectedItems:
             for frameItem in selectedItems:
-                fullName = str(frameItem.data(0, QtCore.Qt.UserRole))
+                fullName = str(frameItem.data(0, QtCore.Qt.ItemDataRole.UserRole))
                 poseInd, frameInd = [
                     int(ind) for ind in re.findall(r"\b\d+\b", fullName)
                 ]
@@ -532,8 +532,8 @@ class StoreXml(QtWidgets.QDialog):
 
                         toAdd.append(("{0}_{1}".format(geom, frame), frameItem))
 
-                        frameItem.setData(0, QtCore.Qt.UserRole, frame_tag)
-                        frameItem.setData(1, QtCore.Qt.UserRole, pose_tag)
+                        frameItem.setData(0, QtCore.Qt.ItemDataRole.UserRole, frame_tag)
+                        frameItem.setData(1, QtCore.Qt.ItemDataRole.UserRole, pose_tag)
 
                     for _geom_frame, frameItem in sorted(toAdd):
                         self.uiAllFramesTW.addTopLevelItem(frameItem)
@@ -565,10 +565,10 @@ class StoreXml(QtWidgets.QDialog):
         self.uiXmlStoreFile.setFilters("XML Files (*.xml)")
         self.uiStoreLAY.insertWidget(0, self.uiXmlStoreFile, 2)
 
-        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.WindowType.Tool | QtCore.Qt.WindowType.WindowStaysOnTopHint)
         self.setWindowTitle("Store xml file")
         self.uiAllFramesTW.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
         )
         self.uiAllFramesTW.setAlternatingRowColors(True)
 

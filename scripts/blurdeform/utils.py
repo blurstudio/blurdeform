@@ -1,8 +1,8 @@
 import os
 import sys
-from .Qt.QtCore import Qt
-from .Qt.QtGui import QIcon
-from .Qt.QtWidgets import QApplication, QMainWindow, QDialog, QSplashScreen
+from Qt.QtCore import Qt
+from Qt.QtGui import QIcon
+from Qt.QtWidgets import QApplication, QMainWindow, QDialog, QSplashScreen
 
 
 def getUiFile(fileVar, subFolder="ui", uiName=None):
@@ -165,6 +165,6 @@ def launchDialog(parent, dialogClass, instance, modal=True, instanced=True, **kw
         dlg.show()
         dlg.raise_()
         dlg.setWindowState(
-            dlg.windowState() & ~Qt.WindowMinimized | Qt.WindowActive
+            dlg.windowState() & ~Qt.WindowState.WindowMinimized | Qt.WindowState.WindowActive
         )
     return dlg

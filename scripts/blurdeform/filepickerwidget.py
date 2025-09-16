@@ -1,6 +1,6 @@
-from .Qt.QtCore import Qt, Property, Signal, Slot
-from .Qt.QtGui import QColor
-from .Qt.QtWidgets import (
+from Qt.QtCore import Qt, Property, Signal, Slot
+from Qt.QtGui import QColor
+from Qt.QtWidgets import (
     QApplication,
     QFileDialog,
     QHBoxLayout,
@@ -9,7 +9,7 @@ from .Qt.QtWidgets import (
     QWidget,
     QComboBox,
 )
-from .Qt import QtCompat
+from Qt import QtCompat
 import os
 
 RESOLVED_STYLESHEET_DEFAULT = """QLineEdit {color: rgba%(fg)s;
@@ -41,9 +41,9 @@ class FilePickerWidget(QWidget):
 
     def __init__(self, parent=None):
         self._correctBackground = QColor(156, 206, 156, 255)
-        self._correctForeground = QColor(Qt.white)
+        self._correctForeground = QColor(Qt.GlobalColor.white)
         self._inCorrectBackground = QColor(210, 156, 156, 255)
-        self._inCorrectForeground = QColor(Qt.white)
+        self._inCorrectForeground = QColor(Qt.GlobalColor.white)
         self._defaultLocation = ""
         super(FilePickerWidget, self).__init__(parent)
 
@@ -56,7 +56,7 @@ class FilePickerWidget(QWidget):
         )
         # Make this widget focusable and pass the widget focus to uiFilenameTXT
         self.setFocusProxy(self.uiFilenameTXT)
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         layout = QHBoxLayout(self)
         layout.addWidget(self.uiFilenameTXT)
         layout.addWidget(self.uiPickFileBTN)
@@ -115,7 +115,7 @@ class FilePickerWidget(QWidget):
                 break
             else:
                 initialPath = os.path.dirname(initialPath)
-        if QApplication.keyboardModifiers() == Qt.ControlModifier:
+        if QApplication.keyboardModifiers() == Qt.KeyboardModifier.ControlModifier:
             import subprocess
 
             # pull the filpath from the inputed initialPath

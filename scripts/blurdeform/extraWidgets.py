@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from contextlib import contextmanager
 import time
 import datetime
-from .Qt import QtWidgets, QtCore, QtGui
+from Qt import QtWidgets, QtCore, QtGui
 from .utils import rootWindow
 from maya import cmds, mel
 
@@ -154,12 +154,12 @@ class KeyFrameBtn(QtWidgets.QPushButton):
     def mouseMoveEvent(self, event):
         if self.moving:
             controlShitPressed = (
-                event.modifiers() == QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier
+                event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier | QtCore.Qt.KeyboardModifier.ShiftModifier
             )
             shiftPressed = (
                 controlShitPressed
                 or event.modifiers()
-                == QtCore.Qt.KeyboardModifiers(QtCore.Qt.ShiftModifier)
+                == QtCore.Qt.KeyboardModifiers(QtCore.Qt.KeyboardModifier.ShiftModifier)
             )
             Xpos = event.globalX() - self.globalX + self.prevPos.x()
             theKey = (Xpos - self.startPos) / self.oneKeySize
@@ -182,17 +182,17 @@ class KeyFrameBtn(QtWidgets.QPushButton):
 
     def mousePressEvent(self, event):
         controlShitPressed = (
-            event.modifiers() == QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier
+            event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier | QtCore.Qt.KeyboardModifier.ShiftModifier
         )
         controlPressed = (
-            controlShitPressed or event.modifiers() == QtCore.Qt.ControlModifier
+            controlShitPressed or event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier
         )
 
         self.duplicateMode = controlPressed
         self.moving = False
         if not self.checked:
             self.select(addSel=controlPressed)
-        if event.button() == QtCore.Qt.RightButton:
+        if event.button() == QtCore.Qt.MouseButton.RightButton:
             index = self.theTimeSlider.listKeys.index(self)
             itemFrame = self.mainWindow.uiFramesTW.topLevelItem(index)
 
@@ -200,7 +200,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
             self.mainWindow.popup_menu.fromFrame = True
             self.mainWindow.launchPopupMenu(event.globalPos(), 1)
 
-        elif event.button() == QtCore.Qt.LeftButton:
+        elif event.button() == QtCore.Qt.MouseButton.LeftButton:
             self.moving = True
             self.globalX = event.globalX()
             self.prevPos = self.pos()
@@ -222,7 +222,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
 
             if self.duplicateMode:
                 self.theTimeSlider.addDisplayKey(self.prevTime, isEmpty=self.isEmpty)
-        elif event.button() == QtCore.Qt.MidButton:
+        elif event.button() == QtCore.Qt.MouseButton.MidButton:
             frameIndex = float(self.theTime)
             cmds.currentTime(frameIndex)
 
@@ -318,7 +318,7 @@ class KeyFrameBtn(QtWidgets.QPushButton):
         self.isEmpty = isEmpty
         self.duplicateMode = False
 
-        self.setCursor(QtGui.QCursor(QtCore.Qt.SplitHCursor))
+        self.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.SplitHCursor))
         if theTime == int(theTime):
             self.theTime = int(theTime)
         else:

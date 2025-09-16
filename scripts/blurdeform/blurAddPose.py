@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from .Qt import QtCore, QtWidgets, QtCompat
+from Qt import QtCore, QtWidgets, QtCompat
 from maya import cmds
 from .utils import getUiFile
 
@@ -69,7 +69,7 @@ class BlurAddPose(Dialog):
         self.uiWarningLabel.setVisible(False)
         self.uiWarningExistPoseNameLabel.hide()
 
-        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.WindowType.Tool | QtCore.Qt.WindowType.WindowStaysOnTopHint)
         self.setWindowTitle("Add New Pose")
 
         self.refreshWindow()
