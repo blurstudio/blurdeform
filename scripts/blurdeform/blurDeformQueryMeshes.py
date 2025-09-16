@@ -1,6 +1,6 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from .Qt import QtCore, QtWidgets, QtCompat
+from Qt import QtCore, QtWidgets, QtCompat
 import difflib
 from maya import cmds
 from six.moves import range
@@ -25,10 +25,10 @@ class BlurDeformQueryMeshes(Dialog):
         QtCompat.loadUi(getUiFile(__file__), self)
 
         self.buttonBox.clicked.connect(self.infoClick)
-        self.buttonBox.button(QtWidgets.QDialogButtonBox.Yes).setText("Add Selected")
-        self.buttonBox.button(QtWidgets.QDialogButtonBox.YesToAll).setText("Add All")
+        self.buttonBox.button(QtWidgets.QDialogButtonBox.StandardButton.Yes).setText("Add Selected")
+        self.buttonBox.button(QtWidgets.QDialogButtonBox.StandardButton.YesToAll).setText("Add All")
 
-        # self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.WindowStaysOnTopHint)
+        # self.setWindowFlags(QtCore.Qt.WindowType.Tool | QtCore.Qt.WindowType.WindowStaysOnTopHint)
         #self.setWindowModality
         self.setWindowTitle("Pick meshes to Add")
 
@@ -62,7 +62,7 @@ class BlurDeformQueryMeshes(Dialog):
             item = QtWidgets.QTreeWidgetItem(self.uiMeshesLW)
             item.setText(0, nm)
             item.setFlags(
-                item.flags() | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsUserCheckable
+                item.flags() | QtCore.Qt.ItemFlag.ItemIsEditable | QtCore.Qt.ItemFlag.ItemIsUserCheckable
             )
             # self.uiMeshesLW.addTopLevelItem(item)
 
@@ -99,7 +99,7 @@ class BlurDeformQueryMeshes(Dialog):
 
     def accept(self):
         addAll = self.btnClicked is self.buttonBox.button(
-            QtWidgets.QDialogButtonBox.YesToAll
+            QtWidgets.QDialogButtonBox.StandardButton.YesToAll
         )
 
         topItems = (

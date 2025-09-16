@@ -20,7 +20,7 @@ from xml.dom import minidom
 from xml.etree import ElementTree
 from maya import cmds, mel, OpenMaya
 
-from .Qt import QtGui, QtCore, QtWidgets, QtCompat
+from Qt import QtGui, QtCore, QtWidgets, QtCompat
 from . import extraWidgets, blurAddPose, blurDeformQueryMeshes, storeXml, utils
 
 import six
@@ -132,7 +132,7 @@ class BlurDeformDialog(Dialog):
         if not selectedFrames:
             return
         frameItem = selectedFrames[0]
-        frameName = str(frameItem.data(0, QtCore.Qt.UserRole))
+        frameName = str(frameItem.data(0, QtCore.Qt.ItemDataRole.UserRole))
         self.copiedFrame = frameName
 
     def deltasPaste(self):
@@ -197,7 +197,7 @@ class BlurDeformDialog(Dialog):
         # Now PASTE ----------------------
         # first we clear all mvts
         for frameItem in selectedFrames:
-            frameName = str(frameItem.data(0, QtCore.Qt.UserRole))
+            frameName = str(frameItem.data(0, QtCore.Qt.ItemDataRole.UserRole))
             storedVectorsIndices = (
                 cmds.getAttr(frameName + ".storedVectors", mi=True) or []
             )
@@ -228,7 +228,7 @@ class BlurDeformDialog(Dialog):
             selectedFrames = self.uiFramesTW.selectedItems()
 
             for frameItem in selectedFrames:
-                frameName = str(frameItem.data(0, QtCore.Qt.UserRole))
+                frameName = str(frameItem.data(0, QtCore.Qt.ItemDataRole.UserRole))
                 geoIndices = cmds.getAttr(frameName + ".storedVectors", mi=True) or []
                 dicVal = {"frameName": frameName, "typeOfBake": typeOfBake}
                 attributeForBaking = "{frameName}.{typeOfBake}".format(**dicVal)
@@ -279,7 +279,7 @@ class BlurDeformDialog(Dialog):
 
         # work only for 1 frame at a time right now
         frameItem = selectedFrames[0]
-        frameName = str(frameItem.data(0, QtCore.Qt.UserRole))
+        frameName = str(frameItem.data(0, QtCore.Qt.ItemDataRole.UserRole))
 
         frameIndex = cmds.getAttr(frameName + ".frame")
         cmds.currentTime(frameIndex)
@@ -370,7 +370,7 @@ class BlurDeformDialog(Dialog):
             return
 
         for frameItem in selectedFrames:
-            frameName = str(frameItem.data(0, QtCore.Qt.UserRole))
+            frameName = str(frameItem.data(0, QtCore.Qt.ItemDataRole.UserRole))
 
             storedVectorsIndices = (
                 cmds.getAttr(frameName + ".storedVectors", mi=True) or []
@@ -751,7 +751,7 @@ class BlurDeformDialog(Dialog):
         )
         if res == "Yes":
             for currentFrameItem in self.uiFramesTW.selectedItems():
-                toDelete = str(currentFrameItem.data(0, QtCore.Qt.UserRole))
+                toDelete = str(currentFrameItem.data(0, QtCore.Qt.ItemDataRole.UserRole))
                 cmds.removeMultiInstance(toDelete, b=True)
             self.refresh()
 
@@ -809,7 +809,7 @@ class BlurDeformDialog(Dialog):
 
     def renamePose(self, item, column):
         newName = item.text(0)
-        blurPose = str(item.data(0, QtCore.Qt.UserRole))
+        blurPose = str(item.data(0, QtCore.Qt.ItemDataRole.UserRole))
 
         prevName = cmds.getAttr(blurPose + ".poseName")
         if newName != prevName:
@@ -820,7 +820,7 @@ class BlurDeformDialog(Dialog):
                     item.setText(0, str(prevName))
 
         # check state
-        isChecked = item.checkState(column) == QtCore.Qt.Checked
+        isChecked = item.checkState(column) == QtCore.Qt.CheckState.Checked
         prevVal = cmds.getAttr(blurPose + ".poseEnabled")
         if isChecked != prevVal:
             cmds.setAttr(blurPose + ".poseEnabled", isChecked)
@@ -848,7 +848,7 @@ class BlurDeformDialog(Dialog):
             self.uiFramesTW.selectionModel().clearSelection()
 
     def refreshPoseInfo(self, item, prevItem):
-        blurPose = str(item.data(0, QtCore.Qt.UserRole))
+        blurPose = str(item.data(0, QtCore.Qt.ItemDataRole.UserRole))
         self.currentPose = blurPose
         self.refreshListFrames()
 
@@ -905,7 +905,7 @@ class BlurDeformDialog(Dialog):
         except ValueError:
             cmds.confirmDialog(m="not a float", title="ERROR")
             return
-        frameChannel = str(item.data(0, QtCore.Qt.UserRole))
+        frameChannel = str(item.data(0, QtCore.Qt.ItemDataRole.UserRole))
         oldFrame = cmds.getAttr(frameChannel + ".frame")
         changeOccured = False
         if floatFrame != oldFrame:
@@ -916,7 +916,7 @@ class BlurDeformDialog(Dialog):
                 with extraWidgets.toggleBlockSignals([self.uiFramesTW]):
                     item.setText(0, str(oldFrame))
         # check state
-        isChecked = item.checkState(0) == QtCore.Qt.Checked
+        isChecked = item.checkState(0) == QtCore.Qt.CheckState.Checked
         prevVal = cmds.getAttr(frameChannel + ".frameEnabled")
         if isChecked != prevVal:
             cmds.setAttr(frameChannel + ".frameEnabled", isChecked)
@@ -970,8 +970,8 @@ class BlurDeformDialog(Dialog):
                     frameItem.setText(0, str(deformFrame))
                     frameItem.setFlags(
                         frameItem.flags()
-                        | QtCore.Qt.ItemIsEditable
-                        | QtCore.Qt.ItemIsUserCheckable
+                        | QtCore.Qt.ItemFlag.ItemIsEditable
+                        | QtCore.Qt.ItemFlag.ItemIsUserCheckable
                     )
 
                     checkState = cmds.getAttr(
@@ -979,13 +979,13 @@ class BlurDeformDialog(Dialog):
                         + ".deformations[{0}].frameEnabled".format(logicalFrameIndex)
                     )
                     if checkState:
-                        frameItem.setCheckState(0, QtCore.Qt.Checked)
+                        frameItem.setCheckState(0, QtCore.Qt.CheckState.Checked)
                     else:
-                        frameItem.setCheckState(0, QtCore.Qt.Unchecked)
+                        frameItem.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
 
                     frameItem.setData(
                         0,
-                        QtCore.Qt.UserRole,
+                        QtCore.Qt.ItemDataRole.UserRole,
                         self.currentPose
                         + ".deformations[{0}]".format(logicalFrameIndex),
                     )
@@ -1086,9 +1086,9 @@ class BlurDeformDialog(Dialog):
 
                 channelItem.setFlags(
                     channelItem.flags()
-                    | QtCore.Qt.ItemIsUserCheckable
-                    | QtCore.Qt.ItemIsSelectable
-                    | QtCore.Qt.ItemIsEditable
+                    | QtCore.Qt.ItemFlag.ItemIsUserCheckable
+                    | QtCore.Qt.ItemFlag.ItemIsSelectable
+                    | QtCore.Qt.ItemFlag.ItemIsEditable
                 )
 
                 # store the logical index
@@ -1097,15 +1097,15 @@ class BlurDeformDialog(Dialog):
                     "{blurNode}.poses[{indPose}].poseEnabled".format(**dicVal)
                 )
                 if checkState:
-                    channelItem.setCheckState(0, QtCore.Qt.Checked)
+                    channelItem.setCheckState(0, QtCore.Qt.CheckState.Checked)
                 else:
-                    channelItem.setCheckState(0, QtCore.Qt.Unchecked)
+                    channelItem.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
 
                 self.uiPosesTW.addTopLevelItem(channelItem)
                 # store for delation
                 channelItem.setData(
                     0,
-                    QtCore.Qt.UserRole,
+                    QtCore.Qt.ItemDataRole.UserRole,
                     "{blurNode}.poses[{indPose}]".format(**dicVal),
                 )
 
@@ -1334,7 +1334,7 @@ class BlurDeformDialog(Dialog):
                 foundPose = False
                 for i in range(self.uiPosesTW.topLevelItemCount()):
                     itemPose = self.uiPosesTW.topLevelItem(i)
-                    thePose = str(itemPose.data(0, QtCore.Qt.UserRole))
+                    thePose = str(itemPose.data(0, QtCore.Qt.ItemDataRole.UserRole))
                     if thePose == currentPose:
                         foundPose = True
                         self.uiPosesTW.setCurrentItem(itemPose)
@@ -2257,7 +2257,7 @@ class BlurDeformDialog(Dialog):
         cmds.currentTime(frameIndex)
 
     def selectVertices(self):
-        frameChannel = str(self.clickedItem.data(0, QtCore.Qt.UserRole))
+        frameChannel = str(self.clickedItem.data(0, QtCore.Qt.ItemDataRole.UserRole))
         toSelect = []
         storedVectorsIndices = (
             cmds.getAttr(frameChannel + ".storedVectors", mi=True) or []
@@ -2405,7 +2405,7 @@ class BlurDeformDialog(Dialog):
         self.uiOptionsBTN.setIcon(utils.ICONS["gear"])
         self.uiOptionsBTN.setText("")
 
-        self.uiFramesTW.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.uiFramesTW.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
 
         self.create_popup_menu()
         self.uiFramesTW.contextMenuEvent = self.on_context_menu
@@ -2475,15 +2475,15 @@ class BlurDeformDialog(Dialog):
             self.__dict__["ui" + nm + "TW"].setRootIsDecorated(False)
 
     def uiFramesTWMPE(self, event):
-        if event.button() == QtCore.Qt.MidButton:
+        if event.button() == QtCore.Qt.MouseButton.MidButton:
             pos = event.pos()
             self.clickedItem = self.uiFramesTW.itemAt(pos)
             self.jumpToFrame()
         QtWidgets.QTreeWidget.mousePressEvent(self.uiFramesTW, event)
 
     def uiBlurNodesTWMPE(self, *args):
-        shiftPressed = args[0].modifiers() == QtCore.Qt.ShiftModifier
-        ctrlPressed = shiftPressed or (args[0].modifiers() == QtCore.Qt.ControlModifier)
+        shiftPressed = args[0].modifiers() == QtCore.Qt.KeyboardModifier.ShiftModifier
+        ctrlPressed = shiftPressed or (args[0].modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier)
 
         if ctrlPressed:
             if shiftPressed:
