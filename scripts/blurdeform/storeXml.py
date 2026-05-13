@@ -9,9 +9,6 @@ from xml.etree import ElementTree
 from . import extraWidgets, filepickerwidget, utils
 from Qt import QtGui, QtWidgets, QtCore, QtCompat
 
-import six
-from six.moves import range, map, zip
-
 
 class StoreXml(QtWidgets.QDialog):
     def closeEvent(self, event):
@@ -223,7 +220,7 @@ class StoreXml(QtWidgets.QDialog):
             storedName = geomSorted
 
         dicIndexFileToIndexNode = {}
-        for indexGeo, meshName in six.iteritems(blurNodeMeshToIndex):
+        for indexGeo, meshName in blurNodeMeshToIndex.items():
             indexFile = fileIndexToMesh[meshName if meshName in fileIndexToMesh else storedName]
             dicIndexFileToIndexNode[indexFile] = indexGeo
 
@@ -428,7 +425,7 @@ class StoreXml(QtWidgets.QDialog):
                     QTprogress=self.progressBar,
                     frontWindow=False,
                 ) as pBar:
-                    for blurNode, inputPoseFramesIndices in six.iteritems(dicBlurPoses):
+                    for blurNode, inputPoseFramesIndices in dicBlurPoses.items():
                         if not pBar.update():
                             break
                         created_tag = self.parentWindow.storeInfoBlurSculpt(

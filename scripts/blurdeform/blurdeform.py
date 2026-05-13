@@ -20,9 +20,6 @@ from maya import cmds, mel, OpenMaya
 from Qt import QtGui, QtCore, QtWidgets, QtCompat
 from . import extraWidgets, blurAddPose, blurDeformQueryMeshes, storeXml, utils
 
-import six
-from six.moves import range, map, zip
-
 try:
     # Blur adds some extra signal handling to the top-level dialogs
     from blurdev.gui import Dialog
@@ -283,7 +280,7 @@ class BlurDeformDialog(Dialog):
 
         # 0 storeBasicMvt
         currentPosi = {}
-        for geo, vertices in six.iteritems(selectedVertices):
+        for geo, vertices in selectedVertices.items():
             toGetPosi = ["{}.vtx[{}]".format(geo, el) for el in orderMelList(vertices)]
             xDest = cmds.xform(toGetPosi, q=True, ws=True, t=True)
             currentPosi[geo] = xDest
@@ -293,7 +290,7 @@ class BlurDeformDialog(Dialog):
 
         # 2 - store position
         theDeltas = {}
-        for geo, vertices in six.iteritems(selectedVertices):
+        for geo, vertices in selectedVertices.items():
             toGetPosi = ["{}.vtx[{}]".format(geo, el) for el in orderMelList(vertices)]
             xDest = cmds.xform(toGetPosi, q=True, ws=True, t=True)
             deltas = [a_i - b_i for a_i, b_i in zip(xDest, currentPosi[geo])]
@@ -305,7 +302,7 @@ class BlurDeformDialog(Dialog):
         # 4 - now apply
         storedVectorsIndices = cmds.getAttr(frameName + ".storedVectors", mi=True) or []
 
-        for geo, thevertIndices in six.iteritems(selectedVertices):
+        for geo, thevertIndices in selectedVertices.items():
             if geo in self.currentGeometries:
                 indexGeo = self.currentGeometriesIndices[
                     self.currentGeometries.index(geo)
