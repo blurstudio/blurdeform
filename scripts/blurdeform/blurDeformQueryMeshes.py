@@ -1,8 +1,6 @@
 from Qt import QtCore, QtWidgets, QtCompat
 import difflib
 from maya import cmds
-from six.moves import range
-from six.moves import zip
 from .utils import getUiFile
 
 try:
