@@ -20,7 +20,7 @@ jobs:
   compile_plugin:
     strategy:
       matrix:
-        maya: [2022, 2023, 2024, 2025, 2026]
+        maya: [2022, 2023, 2024, 2025, 2026, 2027]
         os: [macos-latest, ubuntu-latest, windows-latest]
         include:
           # Add the maya update versions here
@@ -34,8 +34,10 @@ jobs:
             update: 3
           - maya: 2026
             update: 2
+          - maya: 2027
+            update: 2
 
-        # cross-compiling is annoying so just fall back to macos-13
+        # I can't get these to easily work, so just skip 'em
         exclude:
           - os: macos-latest
             maya: 2022
